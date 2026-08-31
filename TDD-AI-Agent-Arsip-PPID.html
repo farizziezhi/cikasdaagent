@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TDD - AI Agent Arsip & Notulensi PPID</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 { border-bottom: 2px solid #2c3e50; padding-bottom: 10px; color: #2c3e50; }
+        h2 { color: #2980b9; margin-top: 34px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        h3 { color: #34495e; margin-top: 24px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.92em; }
+        th, td { border: 1px solid #ddd; padding: 8px 10px; text-align: left; vertical-align: top; }
+        th { background-color: #f8f9fa; }
+        code { background: #f4f4f4; padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
+        pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 14px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 0.85em;
+            line-height: 1.5;
+        }
+        .highlight {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin-bottom: 20px;
+        }
+        .note {
+            background-color: #fdf2e9;
+            padding: 12px 15px;
+            border-left: 4px solid #e67e22;
+            margin-bottom: 16px;
+            font-size: 0.95em;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Technical Design Document (TDD)</h1>
+<div class="highlight">
+    <strong>Nama Produk:</strong> AI Agent Asisten Arsip &amp; Notulensi PPID<br>
+    <strong>Turunan dari:</strong> PRD - AI Agent Asisten Arsip &amp; Notulensi PPID (Revisi 2)<br>
+    <strong>Tanggal:</strong> Agustus 2026<br>
+    <strong>Status:</strong> Draft &mdash; siap dipakai sebagai referensi AI coding agent
+</div>
+
+<p>Dokumen ini menerjemahkan requirement di PRD menjadi keputusan implementasi konkret: struktur project, skema data, kontrak tool call, environment variable, dan prompt system. Tujuannya supaya AI coding agent tidak perlu menebak keputusan desain yang tidak eksplisit di PRD.</p>
+
+<h2>1. Struktur Project</h2>
+<pre>ppid-agent/
+├── src/
+│   ├── index.ts                  # Entry point OpenClaw Gateway + plugin registration
+│   ├── config/
+│   │   └── env.ts                 # Validasi & load environment variables (zod schema)
+│   ├── middleware/
+│   │   └── whitelist.ts           # Cek chat_id sebelum request diproses
+│   ├── tools/
+│   │   ├── searchArchive.ts       # Tool: cari dokumen di Google Drive by metadata
+│   │   ├── sendDocument.ts        # Tool: kirim file/link ke Telegram sesuai ukuran
+│   │   └── transcribeMinutes.ts   # Tool: alur STT + chunking + sintesis notulen
+│   ├── services/
+│   │   ├── groqClient.ts          # Wrapper Groq Whisper API
+│   │   ├── geminiClient.ts        # Wrapper Gemini API (intent parsing & sintesis)
+│   │   ├── driveClient.ts         # Wrapper Google Drive API
+│   │   └── auditLog.ts            # Tulis baris log ke Google Sheets
+│   ├── audio/
+│   │   └── chunker.ts             # ffmpeg-static + ffprobe-static, split audio >25MB
+│   ├── prompts/
+│   │   ├── intentParsing.ts       # System prompt Mode 1 (pencarian arsip)
+│   │   └── minutesSynthesis.ts    # System prompt Mode 2 (sintesis notulen)
+│   └── types/
+│       └── index.ts               # Shared TypeScript types
+├── .env.example
+├── render.yaml
+├── package.json
+└── tsconfig.json
+</pre>
+<div class="note">Catatan: struktur ini mengasumsikan custom tool diregister ke OpenClaw Gateway sebagai plugin lokal (bukan plugin ClawHub eksternal), sesuai kontrak <code>api.registerTool(...)</code> yang didokumentasikan OpenClaw.</div>
+
+<h2>2. Environment Variables</h2>
+<table>
+    <tr><th>Nama</th><th>Deskripsi</th><th>Contoh</th></tr>
+    <tr><td><code>TELEGRAM_BOT_TOKEN</code></td><td>Token bot dari BotFather</td><td><code>123456:ABC-DEF...</code></td></tr>
+    <tr><td><code>GEMINI_API_KEY</code></td><td>API key Google AI Studio</td><td><code>AIza...</code></td></tr>
+    <tr><td><code>GROQ_API_KEY</code></td><td>API key Groq Console</td><td><code>gsk_...</code></td></tr>
+    <tr><td><code>GOOGLE_SERVICE_ACCOUNT_JSON</code></td><td>Kredensial service account (base64 encoded, di-decode saat runtime) untuk akses Drive &amp; Sheets</td><td><code>eyJ0eXBlIjoi...</code></td></tr>
+    <tr><td><code>DRIVE_ARCHIVE_FOLDER_ID</code></td><td>ID folder Google Drive tempat arsip DIP disimpan</td><td><code>1AbCdEfG...</code></td></tr>
+    <tr><td><code>DRIVE_MINUTES_FOLDER_ID</code></td><td>ID folder Google Drive tujuan simpan draf notulen</td><td><code>1XyZ123...</code></td></tr>
+    <tr><td><code>AUDIT_LOG_SHEET_ID</code></td><td>ID Google Sheet untuk audit log</td><td><code>1QwErTy...</code></td></tr>
+    <tr><td><code>WHITELIST_CHAT_IDS</code></td><td>Daftar chat_id staf yang diizinkan, dipisah koma</td><td><code>111111,222222</code></td></tr>
+    <tr><td><code>MAX_DIRECT_SEND_MB</code></td><td>Ambang ukuran file kirim langsung vs link (default 50)</td><td><code>50</code></td></tr>
+    <tr><td><code>GROQ_MAX_UPLOAD_MB</code></td><td>Ambang ukuran audio sebelum chunking (default 25)</td><td><code>25</code></td></tr>
+    <tr><td><code>CHUNK_DURATION_MINUTES</code></td><td>Durasi tiap segmen chunking (default 20)</td><td><code>20</code></td></tr>
+</table>
+
+<h2>3. Skema Data</h2>
+
+<h3>3.1 Whitelist Staf</h3>
+<p>Untuk versi awal (MVP), whitelist disimpan sebagai environment variable <code>WHITELIST_CHAT_IDS</code> (comma-separated). Ini cukup untuk jumlah staf kecil dan menghindari kebutuhan database tambahan. Jika daftar staf berubah, admin PPID redeploy dengan env var baru.</p>
+<pre>// src/middleware/whitelist.ts
+interface WhitelistEntry {
+  chatId: string;
+  staffName?: string;   // opsional, untuk audit log lebih terbaca
+}
+
+function isWhitelisted(chatId: string, whitelist: string[]): boolean {
+  return whitelist.includes(chatId);
+}</pre>
+<div class="note">Jika ke depan staf bertambah banyak atau butuh role (admin vs staf biasa), pindahkan ke Google Sheet terpisah ("Staff Registry") yang dibaca saat startup &mdash; tapi ini di luar scope MVP.</div>
+
+<h3>3.2 Audit Log (Google Sheets)</h3>
+<p>Satu sheet bernama <code>AuditLog</code> dengan kolom berikut, satu baris per aksi:</p>
+<table>
+    <tr><th>Kolom</th><th>Tipe</th><th>Contoh</th></tr>
+    <tr><td>timestamp</td><td>ISO 8601 string</td><td><code>2026-08-19T09:12:03+08:00</code></td></tr>
+    <tr><td>chat_id</td><td>string</td><td><code>111111</code></td></tr>
+    <tr><td>staff_name</td><td>string (opsional)</td><td><code>Budi</code></td></tr>
+    <tr><td>mode</td><td>enum</td><td><code>search</code> | <code>minutes</code></td></tr>
+    <tr><td>query_or_filename</td><td>string</td><td><code>laporan tahunan PPID 2025</code></td></tr>
+    <tr><td>result_document</td><td>string</td><td><code>Laporan_Tahunan_PPID_2025.pdf</code></td></tr>
+    <tr><td>status</td><td>enum</td><td><code>success</code> | <code>not_found</code> | <code>rejected_whitelist</code> | <code>error</code></td></tr>
+</table>
+
+<h3>3.3 Metadata Pencarian Arsip</h3>
+<p>Tool <code>searchArchive</code> mencocokkan query terhadap properti file Google Drive berikut (bukan isi dokumen &mdash; lihat PRD §3.3):</p>
+<table>
+    <tr><th>Field Drive API</th><th>Dipakai untuk</th></tr>
+    <tr><td><code>name</code></td><td>Pencocokan kata kunci nama file</td></tr>
+    <tr><td><code>modifiedTime</code> / <code>createdTime</code></td><td>Filter rentang tanggal ("laporan 2025")</td></tr>
+    <tr><td><code>mimeType</code></td><td>Filter jenis dokumen (PDF, Word, dsb)</td></tr>
+    <tr><td><code>parents</code></td><td>Dibatasi ke <code>DRIVE_ARCHIVE_FOLDER_ID</code> saja</td></tr>
+</table>
+
+<h2>4. Kontrak Tool (Function Calling Schema)</h2>
+<p>Skema berikut didefinisikan sebagai tool untuk Gemini function calling.</p>
+
+<h3>4.1 <code>search_archive</code></h3>
+<pre>{
+  "name": "search_archive",
+  "description": "Cari dokumen arsip PPID berdasarkan metadata (nama, tanggal, jenis dokumen). Bukan pencarian isi dokumen.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "keywords": { "type": "string", "description": "Kata kunci dari nama dokumen" },
+      "date_from": { "type": "string", "description": "ISO date, opsional" },
+      "date_to": { "type": "string", "description": "ISO date, opsional" },
+      "doc_type": { "type": "string", "enum": ["pdf", "doc", "any"], "description": "Jenis dokumen, default any" }
+    },
+    "required": ["keywords"]
+  }
+}</pre>
+<p><strong>Return value:</strong></p>
+<pre>{
+  "results": [
+    { "file_id": "1AbC...", "name": "Laporan_Tahunan_PPID_2025.pdf", "size_mb": 3.2, "modified": "2026-01-15" }
+  ]
+}</pre>
+
+<h3>4.2 <code>send_document</code></h3>
+<pre>{
+  "name": "send_document",
+  "description": "Kirim dokumen ke staf. File <50MB dikirim langsung, >=50MB dikirim sebagai link.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "file_id": { "type": "string" },
+      "chat_id": { "type": "string" }
+    },
+    "required": ["file_id", "chat_id"]
+  }
+}</pre>
+
+<h3>4.3 <code>transcribe_and_summarize_minutes</code></h3>
+<pre>{
+  "name": "transcribe_and_summarize_minutes",
+  "description": "Proses file audio rapat: transkripsi (chunking jika >25MB) lalu sintesis draf notulen terstruktur.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "audio_file_path": { "type": "string", "description": "Path lokal file audio yang diunduh dari Telegram" },
+      "chat_id": { "type": "string" }
+    },
+    "required": ["audio_file_path", "chat_id"]
+  }
+}</pre>
+<p><strong>Return value:</strong></p>
+<pre>{
+  "transcript_length_chars": 15420,
+  "was_chunked": true,
+  "chunk_count": 4,
+  "minutes_draft": {
+    "title": "Rapat Koordinasi PPID - 19 Agustus 2026",
+    "agenda_points": ["..."],
+    "decisions": ["..."],
+    "action_items": [{ "task": "...", "owner": "..." }]
+  },
+  "drive_saved_file_id": "1XyZ..."
+}</pre>
+
+<h2>5. Alur Chunking Audio (Detail Implementasi)</h2>
+<pre>// src/audio/chunker.ts
+import ffmpegPath from 'ffmpeg-static';
+import { path as ffprobePath } from 'ffprobe-static';
+import ffmpeg from 'fluent-ffmpeg';
+
+ffmpeg.setFfmpegPath(ffmpegPath as string);
+ffmpeg.setFfprobePath(ffprobePath);
+
+async function getDurationSeconds(filePath: string): Promise&lt;number&gt; {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(filePath, (err, metadata) => {
+      if (err) return reject(err);
+      resolve(metadata.format.duration ?? 0);
+    });
+  });
+}
+
+async function splitIntoChunks(
+  filePath: string,
+  chunkMinutes: number,
+  outputDir: string
+): Promise&lt;string[]&gt; {
+  const duration = await getDurationSeconds(filePath);
+  const chunkSeconds = chunkMinutes * 60;
+  const chunkPaths: string[] = [];
+  const totalChunks = Math.ceil(duration / chunkSeconds);
+
+  for (let i = 0; i < totalChunks; i++) {
+    const outputPath = `${outputDir}/chunk_${i}.mp3`;
+    await new Promise&lt;void&gt;((resolve, reject) => {
+      ffmpeg(filePath)
+        .setStartTime(i * chunkSeconds)
+        .duration(chunkSeconds)
+        .audioChannels(1)          // mono, sesuai rekomendasi Whisper
+        .audioFrequency(16000)     // 16kHz
+        .audioBitrate('32k')
+        .output(outputPath)
+        .on('end', () => resolve())
+        .on('error', reject)
+        .run();
+    });
+    chunkPaths.push(outputPath);
+  }
+  return chunkPaths;
+}
+
+// Proses SATU segmen per waktu (bukan Promise.all paralel)
+// untuk menghindari OOM di Render Free (512MB RAM, 0.1 CPU) - lihat PRD §4</pre>
+<div class="note">Penting: chunk diproses <strong>sekuensial</strong> (satu per satu dengan <code>await</code> di dalam loop), bukan paralel. Memproses banyak chunk sekaligus di instance 512MB RAM berisiko OOM.</div>
+
+<h2>6. Prompt System</h2>
+
+<h3>6.1 Intent Parsing (Mode 1 - Pencarian Arsip)</h3>
+<pre>Kamu adalah asisten pencarian arsip untuk Kesekretariatan PPID.
+Tugasmu HANYA menerjemahkan perintah staf menjadi parameter pencarian metadata dokumen.
+
+Aturan:
+- Jangan mengklaim bisa mencari ISI dokumen, hanya metadata (nama file, tanggal, jenis).
+- Jika perintah ambigu (mis. tidak jelas tahun/jenis dokumen), tanyakan klarifikasi singkat sebelum memanggil tool search_archive.
+- Selalu gunakan tool search_archive untuk pencarian, jangan menjawab dari pengetahuan umum.
+- Jika hasil pencarian kosong, sampaikan dengan jelas dan sarankan staf mencoba kata kunci lain.
+
+Bahasa respons: Bahasa Indonesia, singkat dan profesional.</pre>
+
+<h3>6.2 Sintesis Notulen (Mode 2 - Notulen Rapat)</h3>
+<pre>Kamu adalah asisten penyusun draf notulen rapat untuk Kesekretariatan PPID.
+Kamu akan menerima transkrip mentah hasil speech-to-text dari rekaman rapat.
+
+Tugasmu: susun draf notulen terstruktur dengan format berikut (dalam Bahasa Indonesia):
+
+1. Judul/Topik Rapat (jika disebutkan dalam rekaman, jika tidak tulis "Tidak disebutkan")
+2. Poin Pembahasan (bullet list, ringkas per topik yang dibahas)
+3. Keputusan yang Diambil (bullet list, hanya yang eksplisit disepakati)
+4. Tindak Lanjut / Action Item (format: [Tugas] - [Penanggung Jawab jika disebutkan])
+
+Aturan penting:
+- JANGAN mengarang informasi yang tidak ada di transkrip. Jika suatu bagian tidak jelas dari
+  rekaman (mis. penanggung jawab tidak disebutkan), tulis "tidak disebutkan" alih-alih menebak.
+- Transkrip hasil STT bisa mengandung kesalahan pengenalan kata, terutama istilah teknis atau
+  nama orang/instansi. Beri catatan di akhir notulen: "Draf ini dihasilkan otomatis dan PERLU
+  diverifikasi manual sebelum difinalisasi."
+- Jangan menyimpulkan sentimen atau menilai kualitas rapat, hanya rangkum faktanya.</pre>
+
+<h2>7. Render Deployment Config</h2>
+<pre># render.yaml
+services:
+  - type: web
+    name: ppid-agent
+    runtime: node
+    plan: free
+    buildCommand: pnpm install && pnpm run build
+    startCommand: pnpm run start
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: DRIVE_ARCHIVE_FOLDER_ID
+        sync: false
+      - key: DRIVE_MINUTES_FOLDER_ID
+        sync: false
+      - key: AUDIT_LOG_SHEET_ID
+        sync: false
+      - key: WHITELIST_CHAT_IDS
+        sync: false</pre>
+<div class="note"><code>sync: false</code> berarti nilai env var diisi manual lewat Render Dashboard, tidak disimpan di repo (menghindari kebocoran kredensial ke Git, sesuai PRD §4 Keamanan).</div>
+
+<h2>8. Batasan yang Wajib Diketahui AI Coding Agent</h2>
+<ul>
+    <li>Render Free spin-down 15 menit idle &mdash; jangan asumsikan service selalu "warm" saat testing manual.</li>
+    <li>File audio wajib dihapus (<code>fs.unlinkSync</code>) setelah diproses, termasuk semua file chunk sementara &mdash; bukan hanya file asli.</li>
+    <li>Pencarian arsip adalah metadata search, bukan semantic search &mdash; jangan implementasikan embedding/vector search kecuali diminta eksplisit di iterasi berikutnya.</li>
+    <li>Proses notulen untuk file besar berjalan asinkron &mdash; bot harus membalas "sedang diproses" dalam &lt;3 detik sebelum mulai transkripsi, bukan menahan response Telegram sampai selesai.</li>
+    <li>Chunking audio diproses sekuensial, bukan paralel (lihat §5).</li>
+</ul>
+
+</body>
+</html>

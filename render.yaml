@@ -1,0 +1,26 @@
+# render.yaml
+# Ref: TDD §7 — Render Free tier deployment config
+services:
+  - type: web
+    name: ppid-agent
+    runtime: node
+    plan: free
+    buildCommand: pnpm install && pnpm run build
+    startCommand: pnpm run start
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: DRIVE_ARCHIVE_FOLDER_ID
+        sync: false
+      - key: DRIVE_MINUTES_FOLDER_ID
+        sync: false
+      - key: AUDIT_LOG_SHEET_ID
+        sync: false
+      - key: WHITELIST_CHAT_IDS
+        sync: false

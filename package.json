@@ -1,0 +1,52 @@
+{
+  "name": "ppid-agent",
+  "version": "1.0.0",
+  "description": "AI Agent Asisten Arsip & Notulensi PPID",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node --env-file=.env dist/index.js",
+    "dev": "cross-env OPENCLAW_CONFIG_PATH=openclaw.json node --env-file=.env ./node_modules/openclaw/openclaw.mjs gateway run",
+    "test": "tsx --env-file=.env --test src/**/*.test.ts"
+  },
+  "openclaw": {
+    "extensions": [
+      "./dist/plugin.js"
+    ]
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.33.0",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "docx": "^9.7.1",
+    "ffmpeg-static": "^5.3.0",
+    "ffprobe-static": "^3.1.0",
+    "fluent-ffmpeg": "^2.1.3",
+    "googleapis": "^176.0.0",
+    "groq-sdk": "^1.5.0",
+    "openclaw": "2026.7.1-2",
+    "typebox": "^1.3.16",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/ffprobe-static": "^2.0.3",
+    "@types/fluent-ffmpeg": "^2.1.28",
+    "@types/node": "^26.2.0",
+    "cross-env": "^10.1.0",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@google/genai",
+      "esbuild",
+      "ffmpeg-static",
+      "openclaw",
+      "protobufjs",
+      "tree-sitter-bash"
+    ]
+  }
+}

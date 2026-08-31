@@ -1,0 +1,21 @@
+{
+  "id": "ppid-agent-tools",
+  "name": "PPID Agent Tools",
+  "description": "Custom tools for Kesekretariatan PPID (User Registration, Archive Search, Document Delivery, Minutes Transcription)",
+  "contracts": {
+    "tools": [
+      "check_registration",
+      "register_user",
+      "search_archive",
+      "send_document",
+      "transcribe_minutes"
+    ]
+  },
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false
+  }
+}

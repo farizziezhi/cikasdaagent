@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.env
+*.log
+
+# OpenClaw Backup & Metadata
+openclaw.json.bak.*
+openclaw.json.clobbered.*
+openclaw.json.last-good
+schema.json
+
+# Editors
+.vscode/
+.idea/
+
+# OS Files
+.DS_Store
+Thumbs.db

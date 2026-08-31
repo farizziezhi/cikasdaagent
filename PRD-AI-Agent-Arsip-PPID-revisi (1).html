@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRD - AI Agent Arsip PPID (Revisi)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 { border-bottom: 2px solid #2c3e50; padding-bottom: 10px; color: #2c3e50; }
+        h2 { color: #2980b9; margin-top: 30px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        h3 { color: #34495e; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f8f9fa; }
+        ul, ol { margin-bottom: 20px; }
+        .highlight {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin-bottom: 20px;
+        }
+        .risk {
+            background-color: #fdf2e9;
+            padding: 15px;
+            border-left: 4px solid #e67e22;
+            margin-bottom: 20px;
+        }
+        .tag {
+            display: inline-block;
+            background: #eee;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            margin-right: 5px;
+        }
+        .rev {
+            background: #eafaf1;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: #1e8449;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Product Requirements Document (PRD)</h1>
+    <div class="highlight">
+        <strong>Nama Produk:</strong> AI Agent Asisten Arsip &amp; Notulensi PPID<br>
+        <strong>Pemrakarsa:</strong> Divisi Kesekretariatan (PPID)<br>
+        <strong>Tanggal Penyusunan:</strong> Agustus 2026 (Revisi 2)<br>
+        <strong>Status:</strong> Draft / Perencanaan
+    </div>
+
+    <h2>1. Pendahuluan</h2>
+    <h3>1.1 Latar Belakang</h3>
+    <p>Pengelolaan dokumen Daftar Informasi Publik (DIP) dan arsip surat dinas seringkali membutuhkan waktu pencarian yang lama. Di sisi lain, penyusunan notulen rapat secara manual juga memakan waktu staf yang cukup besar. Proyek otomasi ini mengaplikasikan prinsip arsitektur perangkat lunak yang sejalan dengan kurikulum Informatika di Universitas Tadulako, dirancang khusus untuk mempercepat operasional harian Kesekretariatan PPID di kota Palu tanpa membebani anggaran infrastruktur IT instansi.</p>
+
+    <h3>1.2 Tujuan Solusi</h3>
+    <ul>
+        <li>Membangun asisten virtual berbasis Telegram yang terintegrasi dengan media penyimpanan arsip dinas.</li>
+        <li>Memungkinkan pencarian dokumen menggunakan perintah teks alami (Natural Language) maupun perintah suara (Voice Note).</li>
+        <li><span class="rev">[baru]</span> Mengotomasi pembuatan draf notulen rapat dari rekaman audio utuh yang diunggah staf, menghasilkan ringkasan terstruktur (agenda, poin diskusi, keputusan, tindak lanjut).</li>
+        <li>Menjaga ekosistem server berjalan pada arsitektur layanan <em>zero-cost</em> (gratis), dengan ekspektasi performa yang realistis terhadap batasan tier gratis yang digunakan.</li>
+    </ul>
+
+    <h3>1.3 Ruang Lingkup: Dua Mode Penggunaan STT <span class="rev">[baru]</span></h3>
+    <div class="highlight">
+        <strong>Pembagian peran model <span class="rev">[dipertegas]</span>:</strong> Groq (Whisper-large-v3-turbo) digunakan khusus untuk <em>speech-to-text</em> (audio &rarr; teks mentah) di kedua mode. Gemini 3.5 Flash-Lite digunakan khusus untuk pemahaman bahasa/intent (Mode 1) dan sintesis notulen terstruktur dari transkrip (Mode 2). Kedua model tidak saling menggantikan perannya &mdash; ini pembagian tugas yang disengaja: Groq dipilih untuk transkripsi karena kecepatan inferensi dan biaya rendahnya, sedangkan Gemini dipilih untuk reasoning/sintesis karena kemampuan mengikuti instruksi terstruktur yang lebih baik untuk tugas peringkasan.</div>
+    <table>
+        <tr>
+            <th>Aspek</th>
+            <th>Mode 1: Pencarian Arsip</th>
+            <th>Mode 2: Notulen Rapat</th>
+        </tr>
+        <tr>
+            <td>Sumber audio</td>
+            <td>Voice note Telegram (rekam langsung di chat)</td>
+            <td>File audio utuh diunggah staf (hasil rekam HP/recorder terpisah)</td>
+        </tr>
+        <tr>
+            <td>Durasi tipikal</td>
+            <td>Beberapa detik hingga ~1 menit</td>
+            <td>Puluhan menit hingga beberapa jam</td>
+        </tr>
+        <tr>
+            <td>Ukuran file tipikal</td>
+            <td>&lt; 1 MB (format .ogg terkompresi Telegram)</td>
+            <td>Bisa puluhan–ratusan MB, tergantung kualitas rekam</td>
+        </tr>
+        <tr>
+            <td>Perlakuan khusus</td>
+            <td>Langsung dikirim ke Groq apa adanya</td>
+            <td>Perlu validasi ukuran &amp; kemungkinan chunking sebelum dikirim ke Groq (lihat §3.9)</td>
+        </tr>
+        <tr>
+            <td>Output</td>
+            <td>Dokumen arsip yang relevan</td>
+            <td>Draf notulen terstruktur (bukan transkrip mentah)</td>
+        </tr>
+    </table>
+
+    <h2>2. Arsitektur Sistem & Spesifikasi Teknologi</h2>
+    <table>
+        <tr>
+            <th>Komponen</th>
+            <th>Teknologi / Layanan</th>
+            <th>Fungsi Utama</th>
+        </tr>
+        <tr>
+            <td><strong>Interface (User)</strong></td>
+            <td>Telegram Bot API</td>
+            <td>Media interaksi staf untuk mengirim teks, Voice Note, dan menerima dokumen.</td>
+        </tr>
+        <tr>
+            <td><strong>Core Agent / Logic</strong></td>
+            <td>OpenClaw (Node.js Gateway)</td>
+            <td>Kerangka kerja gateway untuk orkestrasi alat (tool calling), routing channel Telegram, dan manajemen sesi/memori bot.</td>
+        </tr>
+        <tr>
+            <td><strong>Hosting Server</strong></td>
+            <td>Render (Free Web Service)</td>
+            <td>Menjalankan environment Node.js sebagai gateway daemon OpenClaw (lihat catatan keterbatasan free tier di §4.1).</td>
+        </tr>
+        <tr>
+            <td><strong>Storage Arsip</strong></td>
+            <td>Google Drive API</td>
+            <td>Brankas penyimpanan dokumen PDF/Word (tidak memakan disk space server).</td>
+        </tr>
+        <tr>
+            <td><strong>LLM / Otak Logika</strong></td>
+            <td>Gemini 3.5 Flash-Lite</td>
+            <td>Menganalisis maksud perintah staf dan menentukan aksi (tool call) via Google AI Studio. Dipilih karena berbiaya rendah dan latensi rendah untuk tugas klasifikasi/ekstraksi bervolume tinggi.</td>
+        </tr>
+        <tr>
+            <td><strong>Speech-to-Text</strong></td>
+            <td>Groq (Whisper-large-v3-turbo)</td>
+            <td>Mentranskripsi Voice Note staf menjadi teks secara instan dan akurat.</td>
+        </tr>
+    </table>
+
+    <h2>3. Kebutuhan Fungsional (Fungsionalitas Sistem)</h2>
+    <ol>
+        <li><strong>Penerimaan Input Multimodal:</strong> Sistem harus mampu menerima input berupa teks biasa maupun <em>Voice Note</em> berformat <code>.ogg</code> dari Telegram.</li>
+        <li><strong>Transkripsi Otomatis:</strong> Sistem harus mengirimkan file audio ke API Groq dan mengubahnya menjadi string teks berbahasa Indonesia sebelum diproses lebih lanjut.</li>
+        <li><strong>Pencarian Terbantu-AI (bukan semantic search murni) <span class="rev">[diperjelas]</span>:</strong> Agent menerjemahkan perintah bahasa natural staf menjadi query terstruktur (kata kunci, rentang tanggal, jenis dokumen), lalu mencocokkannya terhadap metadata arsip (nama file, folder, tanggal) di Google Drive melalui Drive API. Ini adalah pencarian berbasis metadata yang diperkuat pemahaman bahasa alami LLM, <u>bukan</u> semantic/vector search atas isi dokumen — batasan ini perlu disampaikan ke pengguna agar ekspektasi sesuai kapabilitas riil.</li>
+        <li><strong>Distribusi File Cerdas:</strong>
+            <ul>
+                <li>Jika ukuran dokumen &lt; 50MB, Agent mengunduh dan mengirimkan file fisik langsung ke chat Telegram.</li>
+                <li>Jika ukuran dokumen &ge; 50MB, Agent membalas dengan tautan (link) Google Drive yang relevan.</li>
+            </ul>
+        </li>
+        <li><strong>Pembersihan Jejak Sementara:</strong> Sistem wajib memiliki mekanisme <code>fs.unlinkSync()</code> untuk menghapus <em>cache</em> file dokumen yang sempat mampir di server Render untuk mencegah memori penuh. Catatan: filesystem Render Free bersifat ephemeral dan otomatis terhapus saat service redeploy/restart/spin-down, jadi mekanisme ini adalah pengaman tambahan, bukan satu-satunya jaring pengaman.</li>
+        <li><strong>Kontrol Akses & Whitelist Staf <span class="rev">[baru]</span>:</strong> Bot hanya boleh merespons <code>chat_id</code> Telegram yang telah didaftarkan (whitelist) oleh admin PPID. Permintaan dari <code>chat_id</code> di luar daftar ditolak dengan pesan standar dan dicatat sebagai percobaan akses tidak sah.</li>
+        <li><strong>Audit Log Akses Dokumen <span class="rev">[baru]</span>:</strong> Setiap pencarian dan pengiriman dokumen dicatat (timestamp, nama staf/chat_id, query, nama dokumen yang diakses) ke Google Sheets atau log file terpisah, untuk keperluan akuntabilitas sesuai semangat UU KIP.</li>
+        <li><strong>Penerimaan Upload Audio Rapat <span class="rev">[baru]</span>:</strong> Sistem harus mampu menerima file audio utuh (bukan voice note) yang diunggah staf sebagai dokumen/attachment Telegram, dalam format umum (mp3, m4a, wav, ogg).</li>
+        <li><strong>Validasi &amp; Chunking Audio Panjang <span class="rev">[baru]</span>:</strong> Sebelum transkripsi, sistem memeriksa ukuran file:
+            <ul>
+                <li>Jika &le; 25 MB (batas tier gratis Groq), file dikirim langsung ke Groq Whisper.</li>
+                <li>Jika &gt; 25 MB, sistem memotong audio menjadi beberapa segmen (misal per 20 menit, mono 16kHz) menggunakan <code>ffmpeg</code>, mentranskripsi tiap segmen secara berurutan, lalu menggabungkan hasilnya menjadi satu transkrip utuh.</li>
+                <li><span class="rev">[teknis]</span> Implementasi <code>ffmpeg</code> menggunakan paket npm <code>ffmpeg-static</code> + <code>ffprobe-static</code> yang dibundel bersama <code>fluent-ffmpeg</code>, bukan instalasi sistem operasi manual. Ini diperlukan karena Render Free Web Service tidak menyediakan <code>ffmpeg</code> bawaan di environment Node.js-nya, dan tidak ada akses shell untuk instalasi sistem tanpa Docker.</li>
+            </ul>
+        </li>
+        <li><strong>Sintesis Notulen Terstruktur <span class="rev">[baru]</span>:</strong> Transkrip mentah hasil Whisper diproses lebih lanjut oleh Gemini dengan prompt khusus untuk menghasilkan draf notulen berformat baku instansi, minimal memuat: judul rapat/tanggal (jika disebutkan), daftar poin pembahasan, keputusan yang diambil, dan daftar tindak lanjut (action item) beserta penanggung jawab jika disebutkan dalam rekaman.</li>
+        <li><strong>Pengiriman &amp; Penyimpanan Draf Notulen <span class="rev">[baru]</span>:</strong> Draf notulen dikirim kembali ke staf pengunggah dalam format teks di Telegram, dengan opsi bot menyimpan salinan sebagai file (mis. .docx atau .md) ke folder khusus "Notulen" di Google Drive untuk arsip. Staf tetap perlu melakukan verifikasi/koreksi manual sebelum notulen dianggap final &mdash; sistem eksplisit berstatus <em>draft generator</em>, bukan pengganti notulis.</li>
+    </ol>
+
+    <h2>4. Kebutuhan Non-Fungsional</h2>
+    <ul>
+        <li><strong>Ketersediaan (Availability) <span class="rev">[direvisi]</span>:</strong> Karena menggunakan Render Free tier, service akan spin-down otomatis setelah ±15 menit tanpa traffic dan butuh sekitar 30–60 detik untuk bangun kembali pada request pertama setelah idle. Target performa yang realistis:
+            <ul>
+                <li>Request saat service dalam kondisi "hangat" (sudah aktif): respons &lt; 5 detik.</li>
+                <li>Request pertama setelah idle (cold start): staf diberi pesan otomatis "Sedang memproses, mohon tunggu..." dalam &lt;3 detik, dengan hasil menyusul dalam ±60 detik.</li>
+                <li>Ping keep-alive (mis. UptimeRobot) dapat digunakan untuk mengurangi frekuensi cold-start pada jam kerja aktif, namun perlu diatur wajar (bukan ping setiap menit) karena Render dapat men-suspend service yang dianggap menerima traffic tidak wajar dari otomasi eksternal. Jika suspend terjadi, admin perlu direstore manual dari dashboard Render.</li>
+            </ul>
+        </li>
+        <li><strong>Biaya (Cost):</strong> Rp 0 (Sistem harus memanfaatkan tier gratis dari masing-masing <em>provider</em> tanpa memerlukan penagihan kartu kredit aktif).</li>
+        <li><strong>Keamanan (Security) <span class="rev">[diperluas]</span>:</strong>
+            <ul>
+                <li>Kredensial API dan Token Telegram wajib disimpan di dalam berkas <em>Environment Variables</em> (<code>.env</code>) dan tidak boleh dipublikasikan di repositori publik.</li>
+                <li>Whitelist akses per staf (lihat §3.6) sebagai lapisan kontrol utama, mengingat bot ini menyentuh arsip dinas.</li>
+                <li>Tidak ada penyimpanan salinan dokumen permanen di server; semua file yang diunduh sementara wajib dihapus setelah terkirim (§3.5).</li>
+            </ul>
+        </li>
+        <li><strong>Keberlangsungan Layanan (Continuity) <span class="rev">[baru]</span>:</strong> Admin PPID perlu memantau dashboard Render secara berkala (mis. mingguan) untuk memastikan service tidak dalam status suspended, mengingat tidak ada SLA pada tier gratis.</li>
+        <li><strong>Waktu Proses Notulen (Processing Time) <span class="rev">[baru]</span>:</strong> Proses transkripsi + chunking + sintesis notulen untuk rekaman panjang (&gt;30 menit) berjalan asinkron (background job), bukan dalam satu siklus request-response Telegram yang biasa timeout dalam hitungan puluhan detik. Bot mengirim notifikasi "notulen sedang diproses" segera setelah file diterima, dan mengirim hasil sebagai pesan terpisah setelah selesai (estimasi beberapa menit tergantung panjang rekaman dan kebutuhan chunking).</li>
+        <li><strong>Kuota Harian STT <span class="rev">[baru]</span>:</strong> Tier gratis Groq memiliki batas volume harian (jumlah request dan total detik audio per hari). Penggunaan gabungan Mode 1 (pencarian arsip) dan Mode 2 (notulen rapat, yang jauh lebih boros durasi audio) perlu dipantau agar tidak melampaui kuota harian dan menyebabkan bot gagal merespons di jam sibuk.</li>
+        <li><strong>Batas Resource Chunking Audio <span class="rev">[baru]</span>:</strong> Instance Render Free hanya menyediakan 512 MB RAM dan 0.1 CPU. Pemotongan audio panjang (&gt;1-2 jam) dengan <code>ffmpeg</code> perlu diproses per-segmen (bukan memuat seluruh file ke memori sekaligus) untuk menghindari kehabisan memori (OOM) atau proses yang sangat lambat. Estimasi waktu proses chunking + transkripsi untuk rekaman panjang perlu diuji langsung di environment Render, bukan diasumsikan sama dengan performa di komputer pengembang.</li>
+    </ul>
+
+    <h2>5. Alur Kerja (User Flow)</h2>
+    <p><strong>Skenario Pencarian Dokumen via Suara:</strong></p>
+    <ol>
+        <li>Staf menekan tombol rekam di Telegram dan berkata: <em>"Tolong carikan laporan tahunan PPID 2025."</em></li>
+        <li>OpenClaw Gateway di Render memverifikasi <code>chat_id</code> pengirim terhadap whitelist staf.</li>
+        <li>Jika lolos, gateway mengunduh audio dan mengirimkannya ke Groq.</li>
+        <li>Groq mengembalikan teks ke sistem.</li>
+        <li>Gemini 3.5 Flash-Lite menerima teks dan menginstruksikan fungsi pencarian metadata Google Drive.</li>
+        <li>Gateway mengunduh file PDF dari Google Drive ke folder sementara.</li>
+        <li>Bot Telegram mengirimkan PDF tersebut ke staf; gateway menghapus file sementara dan mencatat aktivitas ke audit log.</li>
+    </ol>
+
+    <h2>6. Alur Kerja Tambahan: Notulen Rapat <span class="rev">[baru]</span></h2>
+    <p><strong>Skenario Pembuatan Draf Notulen dari Rekaman Rapat:</strong></p>
+    <ol>
+        <li>Staf mengunggah file audio rapat (mis. hasil rekam HP, format m4a/mp3) sebagai dokumen ke chat Telegram, dengan caption "notulen" atau perintah serupa.</li>
+        <li>Gateway memverifikasi <code>chat_id</code> terhadap whitelist, lalu membalas konfirmasi "File diterima, sedang diproses..." agar staf tidak menganggu bot hang.</li>
+        <li>Sistem mengecek ukuran file. Jika &gt; 25 MB, audio dipotong menjadi beberapa segmen dengan <code>ffmpeg</code>.</li>
+        <li>Tiap segmen dikirim ke Groq Whisper secara berurutan; hasil transkrip digabung menjadi satu teks utuh.</li>
+        <li>Transkrip lengkap dikirim ke Gemini dengan prompt sintesis notulen (agenda, poin diskusi, keputusan, tindak lanjut).</li>
+        <li>Draf notulen dikirim balik ke staf di Telegram, sekaligus disimpan sebagai file ke folder "Notulen" di Google Drive.</li>
+        <li>File audio sementara dan segmen hasil chunking dihapus dari server; aktivitas dicatat ke audit log.</li>
+    </ol>
+
+    <h2>7. Risiko & Mitigasi <span class="rev">[baru]</span></h2>
+    <div class="risk">
+        <table>
+            <tr>
+                <th>Risiko</th>
+                <th>Dampak</th>
+                <th>Mitigasi</th>
+            </tr>
+            <tr>
+                <td>Render Free spin-down mengganggu respons cepat</td>
+                <td>Staf menganggap bot "mati" saat cold start</td>
+                <td>Pesan status otomatis + ekspektasi waktu respons yang jujur di NFR (§4)</td>
+            </tr>
+            <tr>
+                <td>Render menganggap keep-alive ping sebagai traffic tidak wajar</td>
+                <td>Service disuspend tanpa peringatan jelas</td>
+                <td>Interval ping wajar (bukan tiap menit), monitoring manual berkala oleh admin</td>
+            </tr>
+            <tr>
+                <td>Akses tanpa kontrol ke arsip dinas</td>
+                <td>Kebocoran dokumen ke pihak tidak berwenang</td>
+                <td>Whitelist chat_id (§3.6) + audit log (§3.7)</td>
+            </tr>
+            <tr>
+                <td>Ekspektasi "semantic search" tidak sesuai implementasi</td>
+                <td>Staf kecewa hasil pencarian tidak akurat untuk isi dokumen</td>
+                <td>Dokumentasi jelas bahwa pencarian berbasis metadata (§3.3), bukan isi dokumen</td>
+            </tr>
+            <tr>
+                <td>Rekaman rapat &gt; 25 MB melebihi batas upload Groq free tier</td>
+                <td>Transkripsi gagal diam-diam (silent fail) atau error tidak jelas ke staf</td>
+                <td>Validasi ukuran + chunking otomatis via <code>ffmpeg-static</code>/<code>fluent-ffmpeg</code> sebelum kirim ke Groq (§3.9)</td>
+            </tr>
+            <tr>
+                <td><span class="rev">[baru]</span> <code>ffmpeg</code> tidak tersedia di environment Render Free</td>
+                <td>Error <code>ffmpeg: command not found</code> saat chunking dijalankan, fitur notulen gagal total</td>
+                <td>Gunakan paket <code>ffmpeg-static</code> + <code>ffprobe-static</code> yang membundel binary ke dalam project, bukan bergantung pada instalasi sistem operasi Render (§3.9)</td>
+            </tr>
+            <tr>
+                <td><span class="rev">[baru]</span> RAM 512MB/0.1 CPU Render Free kewalahan memproses rekaman sangat panjang</td>
+                <td>Proses chunking lambat, timeout, atau OOM di rekaman &gt;1-2 jam</td>
+                <td>Proses per-segmen (bukan sekaligus), uji langsung waktu proses di environment Render (§4)</td>
+            </tr>
+            <tr>
+                <td>Proses notulen rekaman panjang melebihi timeout request biasa</td>
+                <td>Bot terlihat "hang", staf mengira gagal dan kirim ulang berkali-kali</td>
+                <td>Pemrosesan asinkron + notifikasi status "sedang diproses" (§4)</td>
+            </tr>
+            <tr>
+                <td>Kuota harian Groq free tier terpakai habis oleh notulen rapat panjang</td>
+                <td>Fitur pencarian arsip via voice note ikut tidak berfungsi di hari yang sama</td>
+                <td>Pemantauan kuota + pertimbangkan penjadwalan/prioritas jika volume tinggi (§4)</td>
+            </tr>
+            <tr>
+                <td>Draf notulen AI dianggap final tanpa verifikasi</td>
+                <td>Kesalahan transkripsi/interpretasi tercatat sebagai keputusan resmi rapat</td>
+                <td>Sistem eksplisit berstatus draft generator; wajib verifikasi manual staf sebelum difinalisasi (§3.11)</td>
+            </tr>
+        </table>
+    </div>
+
+</body>
+</html>
