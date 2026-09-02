@@ -4,6 +4,9 @@
   "description": "AI Agent Asisten Arsip & Notulensi PPID",
   "type": "module",
   "main": "dist/index.js",
+  "engines": {
+    "node": ">=24.15.0"
+  },
   "scripts": {
     "build": "tsc",
     "start": "cross-env OPENCLAW_CONFIG_PATH=openclaw.json node ./node_modules/openclaw/openclaw.mjs gateway run",
