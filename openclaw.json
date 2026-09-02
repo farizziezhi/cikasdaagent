@@ -17,12 +17,14 @@
   },
   "agents": {
     "defaults": {
-      "model": "google/gemini-3.5-flash-lite"
+      "model": "google/gemini-3.5-flash-lite",
+      "thinkingDefault": "off"
     },
     "list": [
       {
         "id": "main",
-        "name": "PPID Agent (Sistem Arsip & Notulen)"
+        "name": "PPID Agent (Sistem Arsip & Notulen)",
+        "thinkingDefault": "off"
       }
     ]
   },
