@@ -1,9 +1,5 @@
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { Type } from "typebox";
-import { executeSearchArchive } from "./tools/searchArchive.js";
-import { executeSendDocument } from "./tools/sendDocument.js";
-import { executeTranscribeMinutes } from "./tools/transcribeMinutes.js";
-import { isRegistered, registerUser } from "./services/userRegistry.js";
 
 export default definePluginEntry({
   id: "ppid-agent-tools",
@@ -19,6 +15,7 @@ export default definePluginEntry({
         chat_id: Type.String({ description: "Chat ID pengguna Telegram" })
       }),
       async execute(_id, params: any) {
+        const { isRegistered } = await import("./services/userRegistry.js");
         const registered = await isRegistered(params.chat_id);
         const result = {
           registered,
@@ -44,6 +41,7 @@ export default definePluginEntry({
         registration_code: Type.String({ description: "Kode akses kantor yang diberikan pengguna" })
       }),
       async execute(_id, params: any) {
+        const { registerUser } = await import("./services/userRegistry.js");
         const result = await registerUser(
           params.chat_id,
           params.nama,
@@ -68,6 +66,7 @@ export default definePluginEntry({
         doc_type: Type.Optional(Type.String({ description: "Jenis dokumen (pdf, doc, any), default any" }))
       }),
       async execute(_id, params: any) {
+        const { executeSearchArchive } = await import("./tools/searchArchive.js");
         const result = await executeSearchArchive(params);
         return {
           content: [{ type: "text", text: JSON.stringify(result) }],
@@ -86,6 +85,7 @@ export default definePluginEntry({
         chat_id: Type.String({ description: "Chat ID staf yang meminta" })
       }),
       async execute(_id, params: any) {
+        const { executeSendDocument } = await import("./tools/sendDocument.js");
         const result = await executeSendDocument(params);
         return {
           content: [{ type: "text", text: JSON.stringify(result) }],
@@ -105,6 +105,7 @@ export default definePluginEntry({
         chat_id: Type.String({ description: "Chat ID peminta" })
       }),
       async execute(_id, params: any) {
+        const { executeTranscribeMinutes } = await import("./tools/transcribeMinutes.js");
         const result = await executeTranscribeMinutes({
           audioFilePath: params.audio_file_path,
           driveLink: params.drive_link,
@@ -117,6 +118,6 @@ export default definePluginEntry({
       }
     });
 
-    console.log("[OpenClaw] PPID tools registered successfully (5 tools).");
+    console.log("[OpenClaw] PPID tools registered successfully (5 tools, lazy-loaded).");
   }
 }) as any;
