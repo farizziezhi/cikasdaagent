@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node --env-file=.env dist/index.js",
+    "start": "cross-env OPENCLAW_CONFIG_PATH=openclaw.json node ./node_modules/openclaw/openclaw.mjs gateway run",
     "dev": "cross-env OPENCLAW_CONFIG_PATH=openclaw.json node --env-file=.env ./node_modules/openclaw/openclaw.mjs gateway run",
     "test": "tsx --env-file=.env --test src/**/*.test.ts"
   },

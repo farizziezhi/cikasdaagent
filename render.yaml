@@ -22,5 +22,7 @@ services:
         sync: false
       - key: AUDIT_LOG_SHEET_ID
         sync: false
+      - key: REGISTRATION_CODE
+        sync: false
       - key: WHITELIST_CHAT_IDS
         sync: false
