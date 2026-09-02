@@ -5,30 +5,23 @@ const TAB_NAME = "RegisteredUsers";
 const HEADERS = ["chat_id", "nama", "registered_at", "status"];
 
 // Cache in-memory agar tidak query Sheet setiap pesan masuk
-let registeredCache: Set<string> = new Set();
+const registeredCache: Set<string> = new Set();
 let cacheLoaded = false;
 
 /**
- * Muat cache dari Google Sheet (dipanggil sekali saat pertama kali dibutuhkan)
+ * Muat cache dari Google Sheet (hanya membaca data tanpa overhead pembuatan tab)
  */
 async function loadCache(): Promise<void> {
   if (cacheLoaded) return;
-  
+
   try {
-    await ensureTabExists(TAB_NAME, HEADERS);
-    
-    // Ambil semua baris, filter yang statusnya "active"
-    const rows = await findRows(TAB_NAME, 3, "active"); // kolom 3 = status
-    
-    // Karena findRows filter by value, kita juga perlu ambil semua rows
-    // dan filter yang active
-    // Sebenarnya findRows sudah filter, jadi kita tinggal ambil chat_id-nya
+    const rows = await findRows(TAB_NAME, 3, "active");
     for (const row of rows) {
       if (row[0]) {
         registeredCache.add(row[0].toString());
       }
     }
-    
+
     cacheLoaded = true;
     console.log(`[UserRegistry] Cache loaded: ${registeredCache.size} registered users.`);
   } catch (error) {
@@ -38,21 +31,39 @@ async function loadCache(): Promise<void> {
 
 /**
  * Cek apakah user dengan chat_id tertentu sudah terdaftar.
+ * Instan (0 ms) jika user ada di WHITELIST_CHAT_IDS atau sudah ada di cache memori.
  */
 export async function isRegistered(chatId: string): Promise<boolean> {
+  const strId = chatId.toString().trim();
+
+  // 1. Cek daftar admin / whitelist env (Instan 0 ms)
+  if (env.WHITELIST_CHAT_IDS) {
+    const whitelist = env.WHITELIST_CHAT_IDS.split(",").map((s) => s.trim());
+    if (whitelist.includes(strId)) {
+      return true;
+    }
+  }
+
+  // 2. Cek in-memory cache (Instan 0 ms)
+  if (registeredCache.has(strId)) {
+    return true;
+  }
+
+  // 3. Jika belum di cache, muat dari Google Sheets
   await loadCache();
-  return registeredCache.has(chatId.toString());
+  return registeredCache.has(strId);
 }
 
 /**
  * Daftarkan user baru. Verifikasi kode akses terlebih dahulu.
- * @returns Object { success, message }
  */
 export async function registerUser(
   chatId: string,
   nama: string,
   registrationCode: string
 ): Promise<{ success: boolean; message: string }> {
+  const strId = chatId.toString().trim();
+
   // 1. Verifikasi kode akses
   if (registrationCode !== env.REGISTRATION_CODE) {
     return {
@@ -62,25 +73,24 @@ export async function registerUser(
   }
 
   // 2. Cek apakah sudah terdaftar
-  await loadCache();
-  if (registeredCache.has(chatId.toString())) {
+  if (await isRegistered(strId)) {
     return {
       success: false,
       message: "Anda sudah terdaftar sebelumnya.",
     };
   }
 
-  // 3. Pastikan tab ada
+  // 3. Pastikan tab ada di Google Sheets
   await ensureTabExists(TAB_NAME, HEADERS);
 
   // 4. Tulis ke Google Sheet
   const now = new Date().toISOString();
-  await appendRow(TAB_NAME, [chatId.toString(), nama, now, "active"]);
+  await appendRow(TAB_NAME, [strId, nama, now, "active"]);
 
-  // 5. Update cache
-  registeredCache.add(chatId.toString());
+  // 5. Update cache memori
+  registeredCache.add(strId);
 
-  console.log(`[UserRegistry] User ${nama} (${chatId}) berhasil didaftarkan.`);
+  console.log(`[UserRegistry] User ${nama} (${strId}) berhasil didaftarkan.`);
 
   return {
     success: true,
@@ -89,7 +99,7 @@ export async function registerUser(
 }
 
 /**
- * Reset cache (dipanggil jika admin mengubah Sheet secara manual)
+ * Reset cache
  */
 export function resetCache(): void {
   registeredCache.clear();
