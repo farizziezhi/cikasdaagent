@@ -37,6 +37,9 @@
       "google": {
         "enabled": true
       },
+      "groq": {
+        "enabled": false
+      },
       "ppid-agent-tools": {
         "enabled": true
       }
