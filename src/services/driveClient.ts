@@ -1,21 +1,14 @@
-import { google } from "googleapis";
 import { env } from "../config/env.js";
 import { ArchiveSearchResult } from "../types/index.js";
+import { getGoogleAccessToken } from "./googleAuth.js";
 import fs from "fs";
+import { Readable } from "stream";
+import { finished } from "stream/promises";
 
-// Initialize Google Auth using the service account credentials from env
-const getAuth = () => {
-  const credentials = JSON.parse(env.GOOGLE_SERVICE_ACCOUNT_JSON);
-  return new google.auth.GoogleAuth({
-    credentials,
-    scopes: ["https://www.googleapis.com/auth/drive.readonly", "https://www.googleapis.com/auth/drive.file"],
-  });
-};
-
-const getDrive = () => {
-  const auth = getAuth();
-  return google.drive({ version: "v3", auth });
-};
+async function getAuthHeader(): Promise<string> {
+  const token = await getGoogleAccessToken();
+  return `Bearer ${token}`;
+}
 
 export interface SearchParams {
   keywords: string;
@@ -37,20 +30,13 @@ export interface FileMetadata {
 function buildDriveQuery(params: SearchParams): string {
   const conditions: string[] = [];
   
-  // Hapus batasan 'in parents' agar bot bisa mencari hingga ke dalam sub-folder.
-  // Karena bot menggunakan Service Account, bot secara otomatis HANYA akan 
-  // mencari di dalam folder-folder yang sudah di-share kepadanya.
-  // Kita tambahkan filter agar folder tidak ikut muncul sebagai hasil pencarian.
   conditions.push(`mimeType != 'application/vnd.google-apps.folder'`);
 
-  // Keyword pada nama file
   if (params.keywords) {
-    // Escaping single quotes untuk keamanan query
     const safeKeyword = params.keywords.replace(/'/g, "\\'");
     conditions.push(`name contains '${safeKeyword}'`);
   }
 
-  // Filter tanggal (modifiedTime)
   if (params.date_from) {
     conditions.push(`modifiedTime >= '${params.date_from}'`);
   }
@@ -58,12 +44,10 @@ function buildDriveQuery(params: SearchParams): string {
     conditions.push(`modifiedTime <= '${params.date_to}'`);
   }
 
-  // Filter jenis dokumen (MIME type)
   if (params.doc_type && params.doc_type !== "any") {
     if (params.doc_type === "pdf") {
       conditions.push(`mimeType = 'application/pdf'`);
     } else if (params.doc_type === "doc") {
-      // Mencakup doc dan docx
       conditions.push(`(mimeType = 'application/msword' or mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')`);
     }
   }
@@ -72,25 +56,35 @@ function buildDriveQuery(params: SearchParams): string {
 }
 
 /**
- * Mencari file arsip di Google Drive berdasarkan metadata.
+ * Mencari file arsip di Google Drive berdasarkan metadata (REST API).
  */
 export async function searchFiles(params: SearchParams): Promise<ArchiveSearchResult[]> {
-  const drive = getDrive();
   const query = buildDriveQuery(params);
+  const authHeader = await getAuthHeader();
+
+  const url = new URL("https://www.googleapis.com/drive/v3/files");
+  url.searchParams.set("q", query);
+  url.searchParams.set("fields", "files(id, name, size, modifiedTime)");
+  url.searchParams.set("spaces", "drive");
+  url.searchParams.set("pageSize", "10");
+  url.searchParams.set("orderBy", "modifiedTime desc");
 
   try {
-    const response = await drive.files.list({
-      q: query,
-      fields: "files(id, name, size, modifiedTime)",
-      spaces: "drive",
-      pageSize: 10,
-      orderBy: "modifiedTime desc"
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: authHeader },
     });
 
-    const files = response.data.files || [];
-    
-    return files.map(file => {
-      // Konversi ukuran bytes ke MB
+    if (!res.ok) {
+      throw new Error(`[DriveClient] Gagal mencari file: ${await res.text()}`);
+    }
+
+    const data = (await res.json()) as {
+      files?: Array<{ id?: string; name?: string; size?: string; modifiedTime?: string }>;
+    };
+
+    const files = data.files || [];
+
+    return files.map((file) => {
       const sizeBytes = parseInt(file.size || "0", 10);
       const size_mb = Number((sizeBytes / (1024 * 1024)).toFixed(2));
 
@@ -98,7 +92,7 @@ export async function searchFiles(params: SearchParams): Promise<ArchiveSearchRe
         file_id: file.id || "",
         name: file.name || "Untitled",
         size_mb: size_mb,
-        modified: file.modifiedTime?.split("T")[0] || "" // Ambil YYYY-MM-DD
+        modified: file.modifiedTime?.split("T")[0] || "",
       };
     });
   } catch (error) {
@@ -111,21 +105,33 @@ export async function searchFiles(params: SearchParams): Promise<ArchiveSearchRe
  * Mengambil detail metadata dari satu file.
  */
 export async function getFileMetadata(fileId: string): Promise<FileMetadata> {
-  const drive = getDrive();
+  const authHeader = await getAuthHeader();
+  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,size,webViewLink`;
+
   try {
-    const response = await drive.files.get({
-      fileId: fileId,
-      fields: "id, name, size, webViewLink",
+    const res = await fetch(url, {
+      headers: { Authorization: authHeader },
     });
 
-    const sizeBytes = parseInt(response.data.size || "0", 10);
+    if (!res.ok) {
+      throw new Error(`[DriveClient] Gagal mengambil metadata: ${await res.text()}`);
+    }
+
+    const data = (await res.json()) as {
+      id?: string;
+      name?: string;
+      size?: string;
+      webViewLink?: string;
+    };
+
+    const sizeBytes = parseInt(data.size || "0", 10);
     const size_mb = Number((sizeBytes / (1024 * 1024)).toFixed(2));
 
     return {
-      id: response.data.id || fileId,
-      name: response.data.name || "Unknown",
+      id: data.id || fileId,
+      name: data.name || "Unknown",
       size_mb: size_mb,
-      webViewLink: response.data.webViewLink || "",
+      webViewLink: data.webViewLink || "",
     };
   } catch (error) {
     console.error(`[DriveClient] Error getting metadata for file ${fileId}:`, error);
@@ -134,53 +140,51 @@ export async function getFileMetadata(fileId: string): Promise<FileMetadata> {
 }
 
 /**
- * Mengunduh file dari Google Drive dan menyimpannya secara lokal (untuk file kecil).
+ * Mengunduh file dari Google Drive dan menyimpannya secara lokal.
  */
 export async function downloadFile(fileId: string, destPath: string): Promise<void> {
-  const drive = getDrive();
-  try {
-    // 1. Cek tipe file terlebih dahulu
-    const meta = await drive.files.get({ fileId, fields: "mimeType" });
-    const mimeType = meta.data.mimeType || "";
+  const authHeader = await getAuthHeader();
 
-    let response;
-    
-    // Tipe Google Workspace yang bisa di-export
+  try {
+    // 1. Cek MIME type
+    const metaRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=mimeType`,
+      { headers: { Authorization: authHeader } }
+    );
+    if (!metaRes.ok) {
+      throw new Error(`Gagal membaca tipe file: ${await metaRes.text()}`);
+    }
+
+    const meta = (await metaRes.json()) as { mimeType?: string };
+    const mimeType = meta.mimeType || "";
+
+    let downloadUrl: string;
+
     const exportableTypes = [
       "application/vnd.google-apps.document",
       "application/vnd.google-apps.spreadsheet",
-      "application/vnd.google-apps.presentation"
+      "application/vnd.google-apps.presentation",
     ];
 
     if (exportableTypes.includes(mimeType)) {
-      // Kita export ke PDF agar bisa diunduh
-      const exportMimeType = "application/pdf";
-      response = await drive.files.export(
-        { fileId: fileId, mimeType: exportMimeType },
-        { responseType: "stream" }
-      );
+      downloadUrl = `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=application/pdf`;
     } else if (mimeType.startsWith("application/vnd.google-apps.")) {
-      // File jenis lain seperti Folder, Form, Shortcut tidak bisa didownload
-      throw new Error(`File ini memiliki format ${mimeType} yang tidak bisa diunduh langsung.`);
+      throw new Error(`File berformat ${mimeType} tidak bisa diunduh langsung.`);
     } else {
-      // 3. Jika file biner biasa (PDF, Word, JPG, dll)
-      response = await drive.files.get(
-        { fileId: fileId, alt: "media" },
-        { responseType: "stream" }
-      );
+      downloadUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
     }
 
-    return new Promise((resolve, reject) => {
-      const dest = fs.createWriteStream(destPath);
-      response.data
-        .on("end", () => {
-          resolve();
-        })
-        .on("error", (err: any) => {
-          reject(err);
-        })
-        .pipe(dest);
+    const res = await fetch(downloadUrl, {
+      headers: { Authorization: authHeader },
     });
+
+    if (!res.ok || !res.body) {
+      throw new Error(`Gagal download konten file: ${await res.text()}`);
+    }
+
+    const fileStream = fs.createWriteStream(destPath);
+    // @ts-ignore
+    await finished(Readable.fromWeb(res.body).pipe(fileStream));
   } catch (error) {
     console.error(`[DriveClient] Error downloading file ${fileId}:`, error);
     throw new Error("Gagal mengunduh file dari Google Drive.");
@@ -188,37 +192,72 @@ export async function downloadFile(fileId: string, destPath: string): Promise<vo
 }
 
 /**
- * Mengunggah file baru ke Google Drive (contoh: untuk notulen).
+ * Mengunggah file baru ke Google Drive (Multipart Upload).
  */
 export async function uploadFile(
   fileName: string,
-  contentStream: fs.ReadStream | string,
+  contentStream: fs.ReadStream | string | Buffer,
   mimeType: string,
   parentFolderId: string
 ): Promise<{ file_id: string; webViewLink: string }> {
-  const drive = getDrive();
+  const authHeader = await getAuthHeader();
+
   try {
-    const fileMetadata = {
+    let fileBuffer: Buffer;
+    if (typeof contentStream === "string") {
+      fileBuffer = Buffer.from(contentStream, "utf-8");
+    } else if (Buffer.isBuffer(contentStream)) {
+      fileBuffer = contentStream;
+    } else {
+      const chunks: Buffer[] = [];
+      for await (const chunk of contentStream) {
+        chunks.push(Buffer.from(chunk));
+      }
+      fileBuffer = Buffer.concat(chunks);
+    }
+
+    const metadata = {
       name: fileName,
       parents: [parentFolderId],
     };
-    
-    let media: any = { mimeType };
-    if (typeof contentStream === "string") {
-      media.body = contentStream;
-    } else {
-      media.body = contentStream;
+
+    const boundary = "-------314159265358979323846";
+    const delimiter = `\r\n--${boundary}\r\n`;
+    const closeDelimiter = `\r\n--${boundary}--`;
+
+    const multipartRequestBody = Buffer.concat([
+      Buffer.from(
+        delimiter +
+          "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
+          JSON.stringify(metadata) +
+          delimiter +
+          `Content-Type: ${mimeType}\r\n\r\n`
+      ),
+      fileBuffer,
+      Buffer.from(closeDelimiter),
+    ]);
+
+    const res = await fetch(
+      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink",
+      {
+        method: "POST",
+        headers: {
+          Authorization: authHeader,
+          "Content-Type": `multipart/related; boundary=${boundary}`,
+        },
+        body: multipartRequestBody,
+      }
+    );
+
+    if (!res.ok) {
+      throw new Error(`[DriveClient] Upload gagal: ${await res.text()}`);
     }
 
-    const response = await drive.files.create({
-      requestBody: fileMetadata,
-      media: media,
-      fields: "id, webViewLink",
-    });
+    const data = (await res.json()) as { id?: string; webViewLink?: string };
 
     return {
-      file_id: response.data.id || "",
-      webViewLink: response.data.webViewLink || "",
+      file_id: data.id || "",
+      webViewLink: data.webViewLink || "",
     };
   } catch (error) {
     console.error("[DriveClient] Error uploading file:", error);
