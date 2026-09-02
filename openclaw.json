@@ -1,6 +1,7 @@
 {
   "gateway": {
     "mode": "local",
+    "host": "0.0.0.0",
     "auth": {
       "mode": "token",
       "token": "b384c00795f3280b4dbd6f06837a662383de4975ef1d1aa9"

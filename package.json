@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "start": "cross-env OPENCLAW_CONFIG_PATH=openclaw.json HOST=0.0.0.0 node --max-old-space-size=128 ./node_modules/openclaw/openclaw.mjs gateway run",
+    "start": "cross-env OPENCLAW_CONFIG_PATH=openclaw.json HOST=0.0.0.0 node --max-old-space-size=280 ./node_modules/openclaw/openclaw.mjs gateway run",
     "dev": "cross-env OPENCLAW_CONFIG_PATH=openclaw.json node --env-file=.env ./node_modules/openclaw/openclaw.mjs gateway run",
     "test": "tsx --env-file=.env --test src/**/*.test.ts"
   },
