@@ -7,7 +7,6 @@ services:
     plan: free
     buildCommand: pnpm install && pnpm run build
     startCommand: pnpm run start
-    healthCheckPath: /healthz
     envVars:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
