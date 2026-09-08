@@ -94,14 +94,17 @@ export default definePluginEntry({
       }
     });
 
-    // 5. Tool: transcribe_minutes
+    // 5. Tool: transcribe_minutes (Multimodal: Audio, PPTX, PDF, Foto, Teks)
     api.registerTool({
       name: "transcribe_minutes",
-      label: "Transcribe Minutes",
-      description: "Mentranskripsi file audio rapat dan membuat notulen terstruktur (.docx). Bisa menerima file audio langsung via Telegram ATAU link Google Drive. Untuk rapat panjang (>20MB), minta staf kirimkan link Google Drive saja.",
+      label: "Transcribe Minutes & Meeting Notes",
+      description: "Menyusun notulen rapat cerdas, bersih, dan to-the-point (.docx & ringkasan chat Telegram). Mendukung multimodal: Voice Note/audio, link Google Drive, materi slide PPTX/PDF, foto papan tulis/slide rapat, atau coretan catatan teks dari staf.",
       parameters: Type.Object({
-        audio_file_path: Type.Optional(Type.String({ description: "Path lokal ke file audio (dari Telegram upload)" })),
-        drive_link: Type.Optional(Type.String({ description: "Link Google Drive ke file audio" })),
+        audio_file_path: Type.Optional(Type.String({ description: "Path lokal ke file audio / voice note" })),
+        drive_link: Type.Optional(Type.String({ description: "Link Google Drive ke rekaman audio rapat" })),
+        document_file_path: Type.Optional(Type.String({ description: "Path lokal ke file materi presentasi PPTX atau PDF" })),
+        image_file_path: Type.Optional(Type.String({ description: "Path lokal ke foto papan tulis rapat atau foto slide" })),
+        meeting_notes_text: Type.Optional(Type.String({ description: "Catatan kasar teks tambahan dari staf di chat" })),
         chat_id: Type.String({ description: "Chat ID peminta" })
       }),
       async execute(_id, params: any) {
@@ -109,6 +112,9 @@ export default definePluginEntry({
         const result = await executeTranscribeMinutes({
           audioFilePath: params.audio_file_path,
           driveLink: params.drive_link,
+          documentFilePath: params.document_file_path,
+          imageFilePath: params.image_file_path,
+          meetingNotesText: params.meeting_notes_text,
           chatId: params.chat_id
         });
         return {
@@ -118,6 +124,37 @@ export default definePluginEntry({
       }
     });
 
-    console.log("[OpenClaw] PPID tools registered successfully (5 tools, lazy-loaded).");
+    // 6. Tool: learn_meeting_context
+    api.registerTool({
+      name: "learn_meeting_context",
+      label: "Learn Meeting Context & Memory",
+      description: "Menyimpan atau melihat memori konteks dinas (proyek berjalan, peran tim/staf, istilah singkatan khusus, atau preferensi rapat). Panggil tool ini saat staf mengajari bot fakta baru, meralat istilah, atau bertanya apa saja yang sudah diingat bot.",
+      parameters: Type.Object({
+        action: Type.Union([
+          Type.Literal("learn"),
+          Type.Literal("forget"),
+          Type.Literal("list")
+        ], { description: "Aksi: 'learn' (mengingat fakta baru), 'forget' (menghapus fakta), atau 'list' (melihat memori)" }),
+        category: Type.Optional(Type.Union([
+          Type.Literal("project"),
+          Type.Literal("team"),
+          Type.Literal("glossary"),
+          Type.Literal("preference")
+        ], { description: "Kategori fakta: project, team, glossary, preference" })),
+        key: Type.Optional(Type.String({ description: "Kata kunci / topik / istilah / nama orang" })),
+        value: Type.Optional(Type.String({ description: "Penjelasan fakta atau konteks yang harus diingat" }))
+      }),
+      async execute(_id, params: any) {
+        const { executeLearnContext } = await import("./tools/learnContext.js");
+        const result = await executeLearnContext(params);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result) }],
+          details: result
+        };
+      }
+    });
+
+    console.log("[OpenClaw] PPID & Notulen tools registered successfully (6 tools, multimodal & learning ready).");
   }
 }) as any;
+

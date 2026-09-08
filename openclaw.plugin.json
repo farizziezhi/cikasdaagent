@@ -8,7 +8,8 @@
       "register_user",
       "search_archive",
       "send_document",
-      "transcribe_minutes"
+      "transcribe_minutes",
+      "learn_meeting_context"
     ]
   },
   "activation": {

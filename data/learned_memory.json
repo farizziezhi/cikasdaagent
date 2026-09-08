@@ -1,0 +1,90 @@
+{
+  "version": "1.0.0",
+  "facts": [
+    {
+      "category": "glossary",
+      "key": "SDA",
+      "value": "Sumber Daya Air (Bidang keairan dan irigasi Dinas CIKASDA Sulteng)",
+      "updatedAt": "2026-09-08T02:33:59.524Z"
+    },
+    {
+      "category": "glossary",
+      "key": "CIKASDA",
+      "value": "Dinas Cipta Karya dan Sumber Daya Air Provinsi Sulawesi Tengah",
+      "updatedAt": "2026-09-08T02:33:59.524Z"
+    },
+    {
+      "category": "glossary",
+      "key": "PPID",
+      "value": "Pejabat Pengelola Informasi dan Dokumentasi",
+      "updatedAt": "2026-09-08T02:33:59.524Z"
+    },
+    {
+      "category": "glossary",
+      "key": "BWS",
+      "value": "Balai Wilayah Sungai (BWS Sulawesi III Palu)",
+      "updatedAt": "2026-09-08T02:33:59.524Z"
+    },
+    {
+      "category": "glossary",
+      "key": "DI",
+      "value": "Daerah Irigasi (misal: DI Gumbasa, DI Singgara, DI Sausu)",
+      "updatedAt": "2026-09-08T02:33:59.524Z"
+    },
+    {
+      "category": "project",
+      "key": "Irigasi Gumbasa",
+      "value": "Daerah Irigasi kewenangan provinsi/nasional penopang ketahanan pangan Lembah Palu dan Sigi",
+      "updatedAt": "2026-09-08T02:33:59.524Z"
+    },
+    {
+      "category": "team",
+      "key": "Dr. Andi Ruly Djanggola, SE., M.Si",
+      "value": "Kepala Dinas Cipta Karya dan Sumber Daya Air (CIKASDA) Provinsi Sulawesi Tengah",
+      "updatedAt": "2026-09-08T02:39:00.000Z"
+    },
+    {
+      "category": "preference",
+      "key": "Gaya Notulen",
+      "value": "To-the-point, poin-poin padat, fokus pada hasil keputusan rapat dan siapa penanggung jawabnya (PIC)",
+      "updatedAt": "2026-09-08T02:33:59.524Z"
+    },
+    {
+      "category": "preference",
+      "key": "CIKASDA NEWS",
+      "value": "Format siaran pers / berita acara jurnalistik kedinasan resmi (5W+1H, kutipan pimpinan, dan narasi pembahasan kegiatan)",
+      "updatedAt": "2026-09-08T02:39:00.000Z"
+    },
+    {
+      "category": "glossary",
+      "key": "BPBPK",
+      "value": "Balai Penataan Bangunan, Prasarana dan Kawasan",
+      "updatedAt": "2026-09-08T02:39:00.000Z"
+    },
+    {
+      "category": "glossary",
+      "key": "Huntap",
+      "value": "Hunian Tetap bagi masyarakat korban bencana Sulawesi Tengah 2018",
+      "updatedAt": "2026-09-08T02:39:00.000Z"
+    },
+    {
+      "category": "glossary",
+      "key": "TPS3R",
+      "value": "Tempat Pengolahan Sampah Reduce, Reuse, Recycle",
+      "updatedAt": "2026-09-08T02:39:00.000Z"
+    },
+    {
+      "category": "glossary",
+      "key": "PSU",
+      "value": "Prasarana, Sarana, dan Utilitas Umum",
+      "updatedAt": "2026-09-08T02:39:00.000Z"
+    }
+  ],
+  "examples": [
+    {
+      "id": "contoh_standar",
+      "title": "Rapat Koordinasi Pengendalian Banjir & Irigasi",
+      "summary": "Pembahasan kesiapan tanggap darurat banjir sungai Palu, peninjauan pintu air DI Gumbasa, dan alokasi anggaran pemeliharaan rutin."
+    }
+  ]
+}
