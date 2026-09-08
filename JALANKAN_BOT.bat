@@ -22,6 +22,13 @@ if exist "%USERPROFILE%\.openclaw\logs\stability" (
     rd /s /q "%USERPROFILE%\.openclaw\logs\stability" >NUL 2>&1
 )
 
+:: Self-healing: Cegah WorkspaceVanishedError jika workspace attestation desync
+if exist "%USERPROFILE%\.openclaw\state" if not exist "%USERPROFILE%\.openclaw\workspace" (
+    echo [HEALING] Memulihkan integritas workspace OpenClaw...
+    call pnpm exec openclaw reset --scope full --yes --non-interactive >NUL 2>&1
+    call pnpm exec openclaw doctor --fix --yes --non-interactive >NUL 2>&1
+)
+
 echo [OK] File .env ditemukan.
 echo Memulai server bot...
 echo.

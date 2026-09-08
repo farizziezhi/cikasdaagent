@@ -4,10 +4,12 @@ dist/
 *.log
 
 # OpenClaw Backup & Metadata
+*.bak
 openclaw.json.bak.*
 openclaw.json.clobbered.*
 openclaw.json.last-good
 schema.json
+npm/
 
 # Editors
 .vscode/

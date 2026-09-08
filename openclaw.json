@@ -8,38 +8,41 @@
   },
   "meta": {
     "lastTouchedVersion": "2026.9.2",
-    "lastTouchedAt": "2026-09-08T02:22:00.000Z"
-  },
-  "models": {
-    "pricing": {
-      "enabled": false
+    "migrations": {
+      "modelPolicyAllowlist": true
     }
   },
+  "models": {},
   "agents": {
     "defaults": {
       "model": "google/gemini-3.5-flash-lite",
       "thinkingDefault": "off"
     },
-    "list": [
-      {
-        "id": "main",
+    "entries": {
+      "main": {
         "name": "PPID Agent (Sistem Arsip & Notulen)",
         "thinkingDefault": "off"
       }
-    ]
+    }
   },
   "channels": {
     "telegram": {
       "enabled": true,
       "dmPolicy": "allowlist",
-      "allowFrom": ["*"]
+      "allowFrom": [
+        "*"
+      ]
     }
   },
   "plugins": {
     "load": {
-      "paths": ["."]
+      "paths": [
+        "."
+      ]
     },
-    "allow": ["ppid-agent-tools"],
+    "allow": [
+      "ppid-agent-tools"
+    ],
     "entries": {
       "google": {
         "enabled": true
