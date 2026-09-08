@@ -9,8 +9,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "start": "cross-env OPENCLAW_CONFIG_PATH=openclaw.json node --max-old-space-size=256 ./node_modules/openclaw/openclaw.mjs gateway run --bind lan --port ${PORT:-18789}",
-    "dev": "cross-env OPENCLAW_CONFIG_PATH=openclaw.json node --max-old-space-size=256 --env-file=.env ./node_modules/openclaw/openclaw.mjs gateway run",
+    "start": "cross-env OPENCLAW_CONFIG_PATH=openclaw.json node --max-old-space-size=256 ./node_modules/openclaw/openclaw.mjs gateway run --force --bind lan --port ${PORT:-18789}",
+    "dev": "cross-env OPENCLAW_CONFIG_PATH=openclaw.json node --max-old-space-size=256 --env-file=.env ./node_modules/openclaw/openclaw.mjs gateway run --force",
     "test": "tsx --env-file=.env --test src/**/*.test.ts"
   },
   "openclaw": {

@@ -6,7 +6,7 @@ echo =====================================================================
 echo           AI AGENT KESEKRETARIATAN PPID DINAS CIKASDA SULTENG        
 echo =====================================================================
 echo.
-echo Sedang memeriksa konfigurasi dan memulai server bot...
+echo Sedang memeriksa konfigurasi dan status sistem...
 echo.
 
 if not exist .env (
@@ -17,8 +17,13 @@ if not exist .env (
     exit /b
 )
 
+:: Reset crash loop breaker jika pernah gagal sebelumnya
+if exist "%USERPROFILE%\.openclaw\logs\stability" (
+    rd /s /q "%USERPROFILE%\.openclaw\logs\stability" >NUL 2>&1
+)
+
 echo [OK] File .env ditemukan.
-echo Memulai bot di latar belakang...
+echo Memulai server bot...
 echo.
 echo PERHATIAN: Jendela ini adalah server bot Telegram.
 echo Jangan ditutup agar bot tetap online dan dapat membalas chat staf.
