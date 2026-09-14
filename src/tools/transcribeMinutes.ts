@@ -236,7 +236,7 @@ export async function executeTranscribeMinutes(params: TranscribeParams) {
     // 2. Kirim ke Gemini dengan System Prompt terintegrasi Memori Dinas
     const systemPrompt = getMinutesSynthesisPrompt();
     const geminiModel = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-3.5-flash-lite",
       systemInstruction: systemPrompt,
       generationConfig: {
         responseMimeType: "application/json",
