@@ -66,6 +66,17 @@ const envSchema = z.object({
     .positive()
     .default(20)
     .describe("Durasi tiap segmen chunking audio (menit)"),
+
+  // === 9Router Gateway ===
+  ROUTER_API_KEY: z
+    .string()
+    .default("")
+    .describe("API Key untuk 9Router lokal di VPS"),
+
+  ROUTER_BASE_URL: z
+    .string()
+    .default("http://127.0.0.1:20128/v1")
+    .describe("Base URL 9Router"),
 });
 
 export type Env = z.infer<typeof envSchema>;

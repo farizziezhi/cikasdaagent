@@ -12,10 +12,32 @@
       "modelPolicyAllowlist": true
     }
   },
-  "models": {},
+  "models": {
+    "providers": {
+      "router9": {
+        "baseUrl": "http://127.0.0.1:20128/v1",
+        "apiKey": "${ROUTER_API_KEY}",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "gemini/gemini-3.5-flash-lite",
+            "name": "Gemini 3.5 Flash Lite"
+          },
+          {
+            "id": "gemini/gemini-3.8-flash",
+            "name": "Gemini 3.8 Flash"
+          },
+          {
+            "id": "groq/qwen/qwen3-32b",
+            "name": "Qwen 3 32B"
+          }
+        ]
+      }
+    }
+  },
   "agents": {
     "defaults": {
-      "model": "google/gemini-3.5-flash-lite",
+      "model": "router9/gemini/gemini-3.5-flash-lite",
       "thinkingDefault": "off"
     },
     "entries": {
