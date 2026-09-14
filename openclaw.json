@@ -87,7 +87,8 @@
         ]
       },
       "imageModel": "router9/gemini/gemini-3.8-flash",
-      "thinkingDefault": "off"
+      "thinkingDefault": "off",
+      "skills": []
     },
     "entries": {
       "main": {
@@ -102,6 +103,17 @@
       "dmPolicy": "allowlist",
       "allowFrom": ["*"]
     }
+  },
+  "tools": {
+    "deny": [
+      "group:media",
+      "group:web",
+      "cron",
+      "skill_workshop"
+    ]
+  },
+  "skills": {
+    "allowBundled": []
   },
   "plugins": {
     "load": {
