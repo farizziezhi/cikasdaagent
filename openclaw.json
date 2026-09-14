@@ -88,6 +88,7 @@
       },
       "imageModel": "router9/gemini/gemini-3.8-flash",
       "thinkingDefault": "off",
+      "skipBootstrap": true,
       "skills": []
     },
     "entries": {
