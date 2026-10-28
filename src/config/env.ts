@@ -88,7 +88,14 @@ const envSchema = z.object({
     .string()
     .default("")
     .describe("Anon/Service Role key Supabase PPID-Digital"),
+
+  // === Integrasi SIVERA (Neon PostgreSQL) ===
+  SIVERA_DATABASE_URL: z
+    .string()
+    .default("")
+    .describe("Database connection string Neon PostgreSQL SIVERA"),
 });
+
 
 
 export type Env = z.infer<typeof envSchema>;

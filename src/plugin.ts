@@ -200,8 +200,32 @@ export default definePluginEntry({
       }
     });
 
-    console.log("[OpenClaw] PPID tools registered successfully (8 tools: Notulensi, Arsip, Memori, & PPID SLA Watchdog).");
+    // 9. Tool: track_sivera_surat
+    api.registerTool({
+      name: "track_sivera_surat",
+      label: "Track SIVERA Mail & Disposition",
+      description: "Lacak posisi surat dinas masuk pada 5 Checkpoint audit trail SIVERA (Registrasi PPID -> Agenda Kearsipan -> Disposisi Kadis -> Tanda Terima Bidang -> Arsip) dan lihat catatan lembar disposisi pimpinan. Panggil saat staf PPID bertanya posisi surat, disposisi surat, atau status naskah dinas tertentu.",
+      parameters: Type.Object({
+        keyword: Type.String({ description: "Kata kunci pencarian (Nomor surat, nomor agenda, nama instansi pengirim, atau perihal)" }),
+        chat_id: Type.Optional(Type.String({ description: "Chat ID pengguna Telegram" }))
+      }),
+      async execute(_id, params: any) {
+        const { executeTrackSiveraSurat } = await import("./tools/siveraTrackTool.js");
+        const result = await executeTrackSiveraSurat({
+          keyword: params.keyword,
+          chat_id: params.chat_id
+        });
+        return {
+          content: [{ type: "text", text: JSON.stringify(result) }],
+          details: result
+        };
+      }
+    });
+
+    console.log("[OpenClaw] PPID tools registered successfully (9 tools: Notulensi, Arsip, Memori, PPID SLA Watchdog, & SIVERA Tracking).");
   }
 }) as any;
+
+
 
 
