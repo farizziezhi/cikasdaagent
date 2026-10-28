@@ -222,9 +222,32 @@ export default definePluginEntry({
       }
     });
 
-    console.log("[OpenClaw] PPID tools registered successfully (9 tools: Notulensi, Arsip, Memori, PPID SLA Watchdog, & SIVERA Tracking).");
+    // 10. Tool: check_apelin_session
+    api.registerTool({
+      name: "check_apelin_session",
+      label: "Check APEL-IN Attendance Report",
+      description: "Pantau status operasional sesi apel dinas (Senin Pagi 07:15 & Kamis Sore 15:45 WITA) dan dapatkan rekapitulasi kehadiran pegawai per bidang yang siap dilaporkan ke pimpinan (Kadis / Sekdis). Panggil saat staf bertanya status apel hari ini, presensi apel, atau rekap disiplin pegawai.",
+      parameters: Type.Object({
+        date: Type.Optional(Type.String({ description: "Tanggal sesi apel dalam format YYYY-MM-DD (opsional, kosongkan untuk sesi hari ini/terbaru)" })),
+        chat_id: Type.Optional(Type.String({ description: "Chat ID pengguna Telegram" }))
+      }),
+      async execute(_id, params: any) {
+        const { executeCheckApelinSession } = await import("./tools/apelinSessionTool.js");
+        const result = await executeCheckApelinSession({
+          date: params.date,
+          chat_id: params.chat_id
+        });
+        return {
+          content: [{ type: "text", text: JSON.stringify(result) }],
+          details: result
+        };
+      }
+    });
+
+    console.log("[OpenClaw] PPID tools registered successfully (10 tools: Notulensi, Arsip, Memori, PPID SLA Watchdog, SIVERA Tracking, & APEL-IN Presence).");
   }
 }) as any;
+
 
 
 

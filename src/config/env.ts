@@ -94,7 +94,14 @@ const envSchema = z.object({
     .string()
     .default("")
     .describe("Database connection string Neon PostgreSQL SIVERA"),
+
+  // === Integrasi APEL-IN (Neon PostgreSQL) ===
+  APELIN_DATABASE_URL: z
+    .string()
+    .default("")
+    .describe("Database connection string Neon PostgreSQL APEL-IN"),
 });
+
 
 
 
