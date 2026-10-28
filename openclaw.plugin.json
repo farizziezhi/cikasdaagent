@@ -9,8 +9,11 @@
       "search_archive",
       "send_document",
       "transcribe_minutes",
-      "learn_meeting_context"
+      "learn_meeting_context",
+      "check_ppid_sla",
+      "extend_ppid_sla"
     ]
+
   },
   "activation": {
     "onStartup": true

@@ -77,7 +77,19 @@ const envSchema = z.object({
     .string()
     .default("http://127.0.0.1:20128/v1")
     .describe("Base URL 9Router"),
+
+  // === Integrasi PPID-Digital (Supabase) ===
+  PPID_SUPABASE_URL: z
+    .string()
+    .default("")
+    .describe("URL Supabase project PPID-Digital"),
+
+  PPID_SUPABASE_SERVICE_KEY: z
+    .string()
+    .default("")
+    .describe("Anon/Service Role key Supabase PPID-Digital"),
 });
+
 
 export type Env = z.infer<typeof envSchema>;
 

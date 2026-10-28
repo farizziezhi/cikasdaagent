@@ -154,7 +154,54 @@ export default definePluginEntry({
       }
     });
 
-    console.log("[OpenClaw] PPID & Notulen tools registered successfully (6 tools, multimodal & learning ready).");
+    // 7. Tool: check_ppid_sla
+    api.registerTool({
+      name: "check_ppid_sla",
+      label: "Check PPID Digital SLA Status",
+      description: "Pantau kepatuhan batas waktu SLA permohonan informasi publik PPID Digital (10 hari kerja + 7 hari perpanjangan). Panggil saat staf bertanya status permohonan, tiket mendekati jatuh tempo (H-3/H-1), atau ringkasan permohonan aktif.",
+      parameters: Type.Object({
+        id: Type.Optional(Type.Number({ description: "Nomor ID tiket permohonan tertentu (opsional, kosongkan untuk melihat semua tiket aktif)" })),
+        chat_id: Type.Optional(Type.String({ description: "Chat ID pengguna Telegram" }))
+      }),
+      async execute(_id, params: any) {
+        const { executeCheckPpidSla } = await import("./tools/ppidSlaTool.js");
+        const result = await executeCheckPpidSla({
+          id: params.id,
+          chat_id: params.chat_id
+        });
+        return {
+          content: [{ type: "text", text: JSON.stringify(result) }],
+          details: result
+        };
+      }
+    });
+
+    // 8. Tool: extend_ppid_sla
+    api.registerTool({
+      name: "extend_ppid_sla",
+      label: "Extend PPID SLA (+7 Hari Kerja)",
+      description: "Memperpanjang batas waktu layanan informasi publik (+7 hari kerja) langsung di basis data PPID Digital sesuai UU KIP No. 14/2008 Pasal 22 ayat (7). Hanya dapat dilakukan satu kali per tiket permohonan.",
+      parameters: Type.Object({
+        id: Type.Number({ description: "Nomor ID tiket permohonan informasi yang diperpanjang" }),
+        alasan: Type.String({ description: "Alasan resmi perpanjangan waktu layanan (minimal 5 karakter, contoh verifikasi teknis/lapangan)" }),
+        chat_id: Type.String({ description: "Chat ID petugas PPID yang mengeksekusi" })
+      }),
+      async execute(_id, params: any) {
+        const { executeExtendPpidSla } = await import("./tools/ppidSlaTool.js");
+        const result = await executeExtendPpidSla({
+          id: params.id,
+          alasan: params.alasan,
+          chat_id: params.chat_id
+        });
+        return {
+          content: [{ type: "text", text: JSON.stringify(result) }],
+          details: result
+        };
+      }
+    });
+
+    console.log("[OpenClaw] PPID tools registered successfully (8 tools: Notulensi, Arsip, Memori, & PPID SLA Watchdog).");
   }
 }) as any;
+
 

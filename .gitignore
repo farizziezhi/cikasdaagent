@@ -18,3 +18,7 @@ npm/
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Local Integration Plans & Context (Never push to Git)
+plans/
+docs/plans/
