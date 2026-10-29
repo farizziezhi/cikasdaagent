@@ -62,11 +62,18 @@ export interface SuratTrackDetail {
   }>;
 }
 
+export interface SiveraPendingStats {
+  unverifiedCount: number;
+  undisposedCount: number;
+  totalActiveCount: number;
+}
+
 export interface SiveraClientOptions {
   connectionString?: string;
   customSearchSurat?: (keyword: string) => Promise<SuratRow[]>;
   customGetDisposisi?: (suratId: string) => Promise<DisposisiRow[]>;
   customGetAuditLogs?: (suratId: string) => Promise<AuditLogRow[]>;
+  customGetStats?: () => Promise<SiveraPendingStats>;
 }
 
 export function mapStatusToCheckpoint(status: SiveraStatusSurat): {
@@ -95,11 +102,13 @@ export class SiveraClient {
   private customSearchSurat?: (keyword: string) => Promise<SuratRow[]>;
   private customGetDisposisi?: (suratId: string) => Promise<DisposisiRow[]>;
   private customGetAuditLogs?: (suratId: string) => Promise<AuditLogRow[]>;
+  private customGetStats?: () => Promise<SiveraPendingStats>;
 
   constructor(options: SiveraClientOptions = {}) {
     this.customSearchSurat = options.customSearchSurat;
     this.customGetDisposisi = options.customGetDisposisi;
     this.customGetAuditLogs = options.customGetAuditLogs;
+    this.customGetStats = options.customGetStats;
 
     const connectionString = options.connectionString ?? env.SIVERA_DATABASE_URL;
 
@@ -233,6 +242,32 @@ export class SiveraClient {
     }
 
     return results;
+  }
+
+  public async getPendingStats(): Promise<SiveraPendingStats> {
+    if (this.customGetStats) {
+      return this.customGetStats();
+    }
+
+    if (!this.pool) {
+      return { unverifiedCount: 0, undisposedCount: 0, totalActiveCount: 0 };
+    }
+
+    const query = `
+      SELECT 
+        COUNT(id) FILTER (WHERE "statusSaatIni" = 'DIDAFTARKAN_PPID')::int as "unverifiedCount",
+        COUNT(id) FILTER (WHERE "statusSaatIni" = 'DITERIMA_KEARSIPAN')::int as "undisposedCount",
+        COUNT(id) FILTER (WHERE "statusSaatIni" IN ('DIDAFTARKAN_PPID', 'DITERIMA_KEARSIPAN', 'TERDISPOSISI', 'DITERIMA_BIDANG', 'DIPROSES'))::int as "totalActiveCount"
+      FROM "Surat";
+    `;
+    const res = await this.pool.query(query);
+    const row = res.rows[0] ?? {};
+
+    return {
+      unverifiedCount: Number(row.unverifiedCount) || 0,
+      undisposedCount: Number(row.undisposedCount) || 0,
+      totalActiveCount: Number(row.totalActiveCount) || 0,
+    };
   }
 
   public async close(): Promise<void> {

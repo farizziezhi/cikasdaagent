@@ -244,7 +244,27 @@ export default definePluginEntry({
       }
     });
 
-    console.log("[OpenClaw] PPID tools registered successfully (10 tools: Notulensi, Arsip, Memori, PPID SLA Watchdog, SIVERA Tracking, & APEL-IN Presence).");
+    // 11. Tool: trigger_morning_digest
+    api.registerTool({
+      name: "trigger_morning_digest",
+      label: "Trigger Morning Command Briefing",
+      description: "Menyusun dan menampilkan laporan pagi terpadu (Morning Command Briefing CIKASDA) yang merangkum 3 pilar: tiket SLA KIP PPID yang mendesak, antrean naskah dinas di loket/meja Kadis SIVERA, dan jadwal/status apel kedinasan APEL-IN hari ini. Panggil saat staf/pimpinan meminta briefing pagi, laporan harian, atau ringkasan status dinas.",
+      parameters: Type.Object({
+        chat_id: Type.Optional(Type.String({ description: "Chat ID pengguna Telegram" }))
+      }),
+      async execute(_id, params: any) {
+        const { executeTriggerMorningDigest } = await import("./tools/morningDigestTool.js");
+        const result = await executeTriggerMorningDigest({
+          chat_id: params.chat_id
+        });
+        return {
+          content: [{ type: "text", text: JSON.stringify(result) }],
+          details: result
+        };
+      }
+    });
+
+    console.log("[OpenClaw] PPID tools registered successfully (11 tools: Notulensi, Arsip, Memori, PPID SLA Watchdog, SIVERA Tracking, APEL-IN Presence, & Morning Briefing).");
   }
 }) as any;
 

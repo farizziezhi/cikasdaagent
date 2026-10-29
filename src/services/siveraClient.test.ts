@@ -114,3 +114,19 @@ test("SIVERA: Hasil pencarian kosong memberikan pesan informatif", () => {
   assert.match(message, /Tidak ditemukan naskah dinas/);
   assert.match(message, /Pastikan nomor surat, nomor agenda, atau kata kunci instansi pengirim sudah tepat/);
 });
+
+test("SIVERA: Pengambilan statistik surat pending", async () => {
+  const client = new SiveraClient({
+    customGetStats: async () => ({
+      unverifiedCount: 4,
+      undisposedCount: 2,
+      totalActiveCount: 15,
+    }),
+  });
+
+  const stats = await client.getPendingStats();
+  assert.equal(stats.unverifiedCount, 4);
+  assert.equal(stats.undisposedCount, 2);
+  assert.equal(stats.totalActiveCount, 15);
+});
+
