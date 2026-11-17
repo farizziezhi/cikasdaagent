@@ -1,3 +1,43 @@
+# .github/workflows/deploy.yml — Auto-deploy ke Oracle Micro (PM2-only)
+# Simpan file ini di repo (path di atas), push ke main, dan setiap push
+# ke main akan otomatis: git pull di Micro -> pnpm install -> pnpm test
+# -> pnpm run build -> pm2 restart ppid-cikasda-bot --update-env.
+#
+# YANG HARUS DI-SET MANUAL SEBELUM INI JALAN (sekali saja):
+# 1. Di Micro, buat deploy key khusus (JANGAN pakai private key pribadimu):
+#      ssh-keygen -t ed25519 -f ~/.ssh/github-deploy -N ""
+#      cat ~/.ssh/github-deploy.pub >> ~/.ssh/authorized_keys
+#    Salin isi ~/.ssh/github-deploy (PRIVATE key) — ini yang dimasukkan
+#    ke GitHub Secrets, jangan pernah di-commit / dikirim lewat chat.
+# 2. Di GitHub repo > Settings > Secrets and variables > Actions > New:
+#      VPS_HOST     = IP publik Oracle Micro
+#      VPS_USER     = ubuntu
+#      VPS_SSH_KEY  = isi private key dari langkah 1
+#      VPS_PORT     = 22 (opsional, default 22 kalau tidak di-set)
+# 3. Pastikan di Micro repo sudah ter-clone di /home/ubuntu/cikasdaagent
+#    dan PM2 app-nya bernama ppid-cikasda-bot (pm2 list).
+#
+# CATATAN:
+# - .env TIDAK ikut di-push (ada di .gitignore), jadi tetap aman di Micro.
+#   Workflow ini tidak menyentuh .env; pm2 restart --update-env yang
+#   membaca .env yang sudah ada di Micro.
+# - data/scheduler-sent.json juga di-gitignore, jadi tidak tertimpa.
+# - Kalau pnpm test gagal, script berhenti (set -e) dan bot TIDAK
+#   di-restart — bot lama tetap jalan. Itu sengaja.
+# - JANGAN pasang systemd — deploy ini PM2-only.
+# - PENTING — dua arah SSH yang berbeda, jangan dicampur:
+#   (a) GitHub Actions -> Micro: private key di GitHub Secret VPS_SSH_KEY,
+#       public key di ~/.ssh/authorized_keys Micro. Ini sudah jalan kalau
+#       job Actions bisa masuk ke Micro.
+#   (b) Micro -> GitHub (git pull): Micro butuh kredensialnya SENDIRI ke
+#       GitHub. Kalau remote masih HTTPS dan repo private, git pull akan
+#       gagal "could not read Username for 'https://github.com'".
+#       Perbaikannya di Micro (sekali saja, lihat bawah): buat key
+#       ~/.ssh/github-pull, daftarkan public key-nya sebagai Deploy Key
+#       (read-only) di GitHub repo, lalu:
+#         git remote set-url origin git@github.com:farizziezhi/cikasdaagent.git
+#       Workflow di bawah sudah memaksa remote ke SSH sebelum pull, tapi
+#       itu hanya berhasil kalau key pull di atas sudah dipasang.
 name: Deploy to Oracle Micro
 
 on:
@@ -18,6 +58,8 @@ jobs:
           script: |
             set -e
             cd /home/ubuntu/cikasdaagent
+            # Paksa remote ke SSH (lihat catatan di atas soal key pull).
+            git remote set-url origin git@github.com:farizziezhi/cikasdaagent.git
             git pull origin main
             pnpm install --frozen-lockfile
             pnpm test
