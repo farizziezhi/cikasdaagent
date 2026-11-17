@@ -3,46 +3,63 @@ import assert from "node:assert/strict";
 import fs from "fs";
 import path from "path";
 import os from "os";
-import ffmpeg from "fluent-ffmpeg";
-import ffmpegStatic from "ffmpeg-static";
 import { getDurationSeconds, splitIntoChunks, cleanupChunks, shouldChunk } from "./chunker.js";
 
-if (ffmpegStatic) {
-  ffmpeg.setFfmpegPath(ffmpegStatic as unknown as string);
-}
-
 const TEMP_DIR = os.tmpdir();
-const TEST_AUDIO_PATH = path.join(TEMP_DIR, "test_audio_180s.ogg");
+const TEST_AUDIO_PATH = path.join(TEMP_DIR, "test_audio_180s.wav");
 const CHUNK_OUTPUT_DIR = path.join(TEMP_DIR, "ppid_test_chunks");
 
+/**
+ * Buat file audio WAV hening (silent PCM) murni di Node.js tanpa ffmpeg lavfi.
+ * Ini memastikan test dapat berjalan di semua OS/environment (termasuk Oracle Micro
+ * di mana ffmpeg-static tidak memiliki input format lavfi).
+ */
+function createSilentWavFile(filePath: string, durationSeconds: number): void {
+  const sampleRate = 8000;
+  const channels = 1;
+  const bitsPerSample = 16;
+  const byteRate = sampleRate * channels * (bitsPerSample / 8);
+  const blockAlign = channels * (bitsPerSample / 8);
+  const dataSize = durationSeconds * byteRate;
+  const buffer = Buffer.alloc(44 + dataSize);
+
+  // RIFF header
+  buffer.write("RIFF", 0);
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  buffer.write("WAVE", 8);
+
+  // fmt subchunk
+  buffer.write("fmt ", 12);
+  buffer.writeUInt32LE(16, 16); // Subchunk1Size (16 for PCM)
+  buffer.writeUInt16LE(1, 20);  // AudioFormat (1 = PCM)
+  buffer.writeUInt16LE(channels, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(byteRate, 28);
+  buffer.writeUInt16LE(blockAlign, 32);
+  buffer.writeUInt16LE(bitsPerSample, 34);
+
+  // data subchunk
+  buffer.write("data", 36);
+  buffer.writeUInt32LE(dataSize, 40);
+
+  fs.writeFileSync(filePath, buffer);
+}
+
 test("Audio Chunker Module", async (t) => {
-  // Setup: Generate 3-minute silent audio file
+  // Setup: Generate 3-minute silent WAV audio file directly in Node
   await t.test("setup - generate silent audio", async () => {
-    await new Promise<void>((resolve, reject) => {
-      console.log("Generating 3-minute silent audio for testing...");
-      ffmpeg()
-        .input("anullsrc=r=16000:cl=mono")
-        .inputFormat("lavfi")
-        .duration(180) // 180 seconds = 3 minutes
-        .audioChannels(1)
-        .audioFrequency(16000)
-        .format("ogg")
-        .output(TEST_AUDIO_PATH)
-        .on("end", () => resolve())
-        .on("error", (err) => reject(new Error(`Gagal membuat file test: ${err.message}`)))
-        .run();
-    });
+    console.log("Generating 3-minute silent audio for testing...");
+    createSilentWavFile(TEST_AUDIO_PATH, 180);
     assert.strictEqual(fs.existsSync(TEST_AUDIO_PATH), true);
   });
 
   await t.test("getDurationSeconds - should return around 180 seconds", async () => {
     const duration = await getDurationSeconds(TEST_AUDIO_PATH);
-    // FFmpeg duration might be slightly off due to encoding, so we check if it's close to 180
     assert.ok(duration >= 179 && duration <= 181, `Duration ${duration} is not around 180s`);
   });
 
   await t.test("shouldChunk - check file size limit", () => {
-    // 3 menit audio silent ukurannya sangat kecil (<1MB),
+    // 3 menit audio silent 8kHz 16-bit ukurannya ~2.8MB (<25MB),
     // jadi pastikan return false.
     const needsChunk = shouldChunk(TEST_AUDIO_PATH);
     assert.strictEqual(needsChunk, false);
