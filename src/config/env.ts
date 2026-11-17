@@ -100,6 +100,17 @@ const envSchema = z.object({
     .string()
     .default("")
     .describe("Database connection string Neon PostgreSQL APEL-IN"),
+
+  // === Broadcast Proaktif (Scheduler CIKASDA) ===
+  BROADCAST_CHAT_IDS: z
+    .string()
+    .default("")
+    .describe("Daftar chat_id penerima broadcast proaktif, dipisah koma (contoh: grup pimpinan)"),
+
+  BROADCAST_TO_REGISTERED: z
+    .string()
+    .default("true")
+    .describe("Kirim broadcast ke seluruh pengguna terdaftar di Sheet ('true' atau 'false')"),
 });
 
 

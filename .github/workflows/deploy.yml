@@ -1,0 +1,26 @@
+name: Deploy to Oracle Micro
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -e
+            cd /home/ubuntu/cikasdaagent
+            git pull origin main
+            pnpm install --frozen-lockfile
+            pnpm test
+            pnpm run build
+            pm2 restart ppid-cikasda-bot --update-env
+            pm2 logs ppid-cikasda-bot --lines 30 --nostream

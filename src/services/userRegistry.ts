@@ -99,6 +99,15 @@ export async function registerUser(
 }
 
 /**
+ * Ambil semua chat_id pengguna terdaftar yang berstatus aktif.
+ * Digunakan oleh broadcast.ts untuk pengiriman proaktif.
+ */
+export async function getRegisteredChatIds(): Promise<string[]> {
+  await loadCache();
+  return Array.from(registeredCache);
+}
+
+/**
  * Reset cache
  */
 export function resetCache(): void {

@@ -3,7 +3,7 @@
     "mode": "local",
     "auth": {
       "mode": "token",
-      "token": "b384c00795f3280b4dbd6f06837a662383de4975ef1d1aa9"
+      "token": "${OPENCLAW_GATEWAY_TOKEN}"
     }
   },
   "meta": {
@@ -128,7 +128,7 @@
     }
   },
   "tools": {
-    "deny": ["group:media", "group:web", "cron", "skill_workshop"]
+    "deny": ["group:media", "group:web", "skill_workshop"]
   },
   "skills": {
     "allowBundled": []

@@ -22,3 +22,6 @@ Thumbs.db
 # Local Integration Plans & Context (Never push to Git)
 plans/
 docs/plans/
+
+# Scheduler persistent state
+data/scheduler-sent.json

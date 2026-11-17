@@ -1,5 +1,7 @@
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { Type } from "typebox";
+import { CommandCenterScheduler } from "./services/commandCenterScheduler.js";
+import { sendBroadcast } from "./services/broadcast.js";
 
 export default definePluginEntry({
   id: "ppid-agent-tools",
@@ -265,6 +267,20 @@ export default definePluginEntry({
     });
 
     console.log("[OpenClaw] PPID tools registered successfully (11 tools: Notulensi, Arsip, Memori, PPID SLA Watchdog, SIVERA Tracking, APEL-IN Presence, & Morning Briefing).");
+
+    // --- Scheduler proaktif (PATCH GABUNGAN 2026-11-17) ---
+    // Inilah yang selama ini hilang: scheduler dibuat + start() dipanggil,
+    // dengan callback pengiriman Telegram yang nyata.
+    // Guard global supaya start() tidak dobel kalau plugin di-reload.
+    const g = globalThis as unknown as { __cikasdaSchedulerStarted?: boolean };
+    if (!g.__cikasdaSchedulerStarted) {
+      g.__cikasdaSchedulerStarted = true;
+      const scheduler = new CommandCenterScheduler({ sendBroadcast });
+      scheduler.start(60_000); // cek tiap 1 menit
+      console.log(
+        "[OpenClaw] CommandCenterScheduler started (briefing 08:00, apel Senin 06:45 & Kamis 15:45, cek SLA tiap jam kerja)",
+      );
+    }
   }
 }) as any;
 
