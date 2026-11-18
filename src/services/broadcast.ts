@@ -22,11 +22,21 @@
 
 const TELEGRAM_API = "https://api.telegram.org";
 
+/**
+ * Normalisasi chat ID: buang awalan platform seperti 'telegram:' (atau prefix apapun sebelum ':')
+ * Contoh: 'telegram:2100878150' -> '2100878150'
+ */
+export function normalizeChatId(id: string): string {
+  const trimmed = id.trim();
+  const colonIndex = trimmed.indexOf(":");
+  return colonIndex !== -1 ? trimmed.slice(colonIndex + 1).trim() : trimmed;
+}
+
 function splitIds(raw: string | undefined): string[] {
   if (!raw) return [];
   return raw
     .split(",")
-    .map((s: string) => s.trim())
+    .map((s: string) => normalizeChatId(s))
     .filter(Boolean);
 }
 
@@ -42,7 +52,7 @@ export async function getBroadcastChatIds(): Promise<string[]> {
       // userRegistry mengimpor env + sheetsClient; di runtime bot
       // env sudah tervalidasi saat startup.
       const { getRegisteredChatIds } = await import("./userRegistry.js");
-      registered = await getRegisteredChatIds();
+      registered = (await getRegisteredChatIds()).map(normalizeChatId).filter(Boolean);
     } catch (err) {
       console.warn(
         "[broadcast] gagal membaca pengguna terdaftar, lanjut dengan daftar env saja:",
@@ -51,8 +61,11 @@ export async function getBroadcastChatIds(): Promise<string[]> {
     }
   }
 
-  // Dedup, pertahankan urutan pertama muncul.
-  return [...new Set([...explicit, ...whitelist, ...registered])];
+  // Dedup setelah normalisasi dan pembersihan, pertahankan urutan pertama muncul.
+  const allNormalized = [...explicit, ...whitelist, ...registered]
+    .map(normalizeChatId)
+    .filter(Boolean);
+  return [...new Set(allNormalized)];
 }
 
 function splitForTelegram(text: string, limit = 4000): string[] {
@@ -76,12 +89,13 @@ export async function sendTelegramMessage(
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) throw new Error("TELEGRAM_BOT_TOKEN belum di-set di .env");
 
+  const cleanChatId = normalizeChatId(chatId);
   for (const part of splitForTelegram(text)) {
     const res = await fetch(`${TELEGRAM_API}/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        chat_id: chatId,
+        chat_id: cleanChatId,
         text: part,
         parse_mode: "HTML",
         disable_web_page_preview: true,
@@ -90,7 +104,7 @@ export async function sendTelegramMessage(
     if (!res.ok) {
       const body = await res.text().catch(() => "");
       throw new Error(
-        `Telegram sendMessage ke ${chatId} gagal (${res.status}): ${body.slice(0, 200)}`,
+        `Telegram sendMessage ke ${cleanChatId} gagal (${res.status}): ${body.slice(0, 200)}`,
       );
     }
   }

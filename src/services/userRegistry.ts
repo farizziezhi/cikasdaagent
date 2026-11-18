@@ -9,6 +9,16 @@ const registeredCache: Set<string> = new Set();
 let cacheLoaded = false;
 
 /**
+ * Normalisasi chat ID: buang awalan platform seperti 'telegram:' (atau prefix apapun sebelum ':')
+ * Contoh: 'telegram:2100878150' -> '2100878150'
+ */
+export function normalizeChatId(id: string): string {
+  const trimmed = id.toString().trim();
+  const colonIndex = trimmed.indexOf(":");
+  return colonIndex !== -1 ? trimmed.slice(colonIndex + 1).trim() : trimmed;
+}
+
+/**
  * Muat cache dari Google Sheet (hanya membaca data tanpa overhead pembuatan tab)
  */
 async function loadCache(): Promise<void> {
@@ -18,7 +28,9 @@ async function loadCache(): Promise<void> {
     const rows = await findRows(TAB_NAME, 3, "active");
     for (const row of rows) {
       if (row[0]) {
-        registeredCache.add(row[0].toString());
+        const rawId = row[0].toString().trim();
+        registeredCache.add(rawId);
+        registeredCache.add(normalizeChatId(rawId));
       }
     }
 
@@ -35,23 +47,24 @@ async function loadCache(): Promise<void> {
  */
 export async function isRegistered(chatId: string): Promise<boolean> {
   const strId = chatId.toString().trim();
+  const cleanId = normalizeChatId(strId);
 
   // 1. Cek daftar admin / whitelist env (Instan 0 ms)
   if (env.WHITELIST_CHAT_IDS) {
-    const whitelist = env.WHITELIST_CHAT_IDS.split(",").map((s) => s.trim());
-    if (whitelist.includes(strId)) {
+    const whitelist = env.WHITELIST_CHAT_IDS.split(",").map((s) => normalizeChatId(s));
+    if (whitelist.includes(strId) || whitelist.includes(cleanId)) {
       return true;
     }
   }
 
   // 2. Cek in-memory cache (Instan 0 ms)
-  if (registeredCache.has(strId)) {
+  if (registeredCache.has(strId) || registeredCache.has(cleanId)) {
     return true;
   }
 
   // 3. Jika belum di cache, muat dari Google Sheets
   await loadCache();
-  return registeredCache.has(strId);
+  return registeredCache.has(strId) || registeredCache.has(cleanId);
 }
 
 /**
@@ -87,8 +100,9 @@ export async function registerUser(
   const now = new Date().toISOString();
   await appendRow(TAB_NAME, [strId, nama, now, "active"]);
 
-  // 5. Update cache memori
+  // 5. Update cache memori (baik format asli maupun ternormalisasi)
   registeredCache.add(strId);
+  registeredCache.add(normalizeChatId(strId));
 
   console.log(`[UserRegistry] User ${nama} (${strId}) berhasil didaftarkan.`);
 
@@ -101,10 +115,14 @@ export async function registerUser(
 /**
  * Ambil semua chat_id pengguna terdaftar yang berstatus aktif.
  * Digunakan oleh broadcast.ts untuk pengiriman proaktif.
+ * Dinormalisasi (tanpa awalan telegram:) dan di-dedup.
  */
 export async function getRegisteredChatIds(): Promise<string[]> {
   await loadCache();
-  return Array.from(registeredCache);
+  const normalized = Array.from(registeredCache)
+    .map(normalizeChatId)
+    .filter(Boolean);
+  return [...new Set(normalized)];
 }
 
 /**
