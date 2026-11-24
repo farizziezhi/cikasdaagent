@@ -312,7 +312,35 @@ export default definePluginEntry({
       },
     });
 
-    console.log("[OpenClaw] PPID tools registered successfully (12 tools: Notulensi, Arsip, Memori, PPID SLA Watchdog, SIVERA Tracking, APEL-IN Presence, Morning Briefing, & WordPress Draft CIKASDA NEWS).");
+    // 13. Tool: create_news_draft (Google Docs / Drive + Telegram, tanpa WordPress WAF)
+    api.registerTool({
+      name: "create_news_draft",
+      label: "Create CIKASDA NEWS Draft (Google Drive / Docs)",
+      description:
+        "Menyusun draf berita CIKASDA NEWS saja (tanpa notulen) dari bahan mentah staf (catatan teks, voice note/audio, slide PPTX/PDF, atau foto kegiatan), menyimpannya sebagai dokumen .docx di Google Drive (siap dibuka di Google Docs), dan mengirimkannya ke Telegram untuk diperiksa Petugas Kehumasan.",
+      parameters: Type.Object({
+        raw_notes: Type.Optional(Type.String({ description: "Catatan bahan mentah berita dari staf" })),
+        audio_file_path: Type.Optional(Type.String({ description: "Path lokal file audio / voice note" })),
+        drive_link: Type.Optional(Type.String({ description: "Link Google Drive rekaman audio" })),
+        document_file_path: Type.Optional(Type.String({ description: "Path lokal slide PPTX atau PDF" })),
+        image_file_path: Type.Optional(Type.String({ description: "Path lokal foto kegiatan" })),
+        headline: Type.Optional(Type.String({ description: "Judul berita (opsional jika sudah disusun)" })),
+        lead_paragraph: Type.Optional(Type.String({ description: "Paragraf pembuka CIKASDA NEWS (opsional)" })),
+        body_paragraphs: Type.Optional(Type.Array(Type.String(), { description: "Paragraf isi (opsional)" })),
+        closing_paragraph: Type.Optional(Type.String({ description: "Paragraf penutup (opsional)" })),
+        chat_id: Type.String({ description: "Chat ID peminta" }),
+      }),
+      async execute(_id, params: any) {
+        const { executeCreateNewsDraft } = await import("./tools/newsDraftTool.js");
+        const result = await executeCreateNewsDraft(params);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result) }],
+          details: result,
+        };
+      },
+    });
+
+    console.log("[OpenClaw] PPID tools registered successfully (13 tools: Notulensi, Arsip, Memori, PPID SLA Watchdog, SIVERA Tracking, APEL-IN Presence, Morning Briefing, WordPress Draft, & Google Docs News Draft).");
 
     // --- Scheduler proaktif (PATCH GABUNGAN 2026-11-17) ---
     // Inilah yang selama ini hilang: scheduler dibuat + start() dipanggil,

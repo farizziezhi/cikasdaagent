@@ -379,3 +379,137 @@ export async function generateMinutesDocx(data: ModernMinutesData | MeetingSynth
   const buffer = await Packer.toBuffer(doc);
   return buffer as Buffer;
 }
+
+/**
+ * Membuat dokumen Word (.docx) khusus Berita Acara / Siaran Pers "CIKASDA NEWS"
+ * (tanpa notulen rapat) untuk diunggah ke Google Drive / dibuka di Google Docs.
+ */
+export async function generateNewsOnlyDocx(news: NewsArticleData): Promise<Buffer> {
+  const currentDate = new Date().toLocaleDateString("id-ID", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const docChildren: Paragraph[] = [
+    new Paragraph({
+      spacing: { after: 120 },
+      shading: { type: ShadingType.CLEAR, fill: "0F766E" },
+      children: [
+        new TextRun({
+          text: "  📰  CIKASDA NEWS — SIARAN PERS & BERITA KEDINASAN  ",
+          bold: true,
+          size: 22,
+          color: "FFFFFF",
+        }),
+      ],
+    }),
+    new Paragraph({
+      spacing: { before: 180, after: 200 },
+      children: [
+        new TextRun({
+          text: news.headline,
+          bold: true,
+          size: 30,
+          color: "0F172A",
+        }),
+      ],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.JUSTIFIED,
+      spacing: { after: 180, line: 340 },
+      children: [
+        new TextRun({
+          text: news.lead_paragraph,
+          bold: true,
+          size: 23,
+          color: "1E293B",
+        }),
+      ],
+    }),
+  ];
+
+  for (const para of news.body_paragraphs || []) {
+    if (!para || !para.trim()) continue;
+    docChildren.push(
+      new Paragraph({
+        alignment: AlignmentType.JUSTIFIED,
+        spacing: { after: 180, line: 340 },
+        children: [
+          new TextRun({
+            text: para.trim(),
+            size: 23,
+            color: "1E293B",
+          }),
+        ],
+      }),
+    );
+  }
+
+  if (news.closing_paragraph && news.closing_paragraph.trim()) {
+    docChildren.push(
+      new Paragraph({
+        alignment: AlignmentType.JUSTIFIED,
+        spacing: { after: 240, line: 340 },
+        children: [
+          new TextRun({
+            text: news.closing_paragraph.trim(),
+            size: 23,
+            color: "1E293B",
+          }),
+        ],
+      }),
+    );
+  }
+
+  docChildren.push(
+    new Paragraph({
+      spacing: { before: 300 },
+      border: {
+        top: { color: "E2E8F0", space: 1, style: BorderStyle.SINGLE, size: 2 },
+      },
+      children: [],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.RIGHT,
+      spacing: { before: 100 },
+      children: [
+        new TextRun({
+          text: `Draf CIKASDA NEWS • AI Agent PPID CIKASDA Sulteng • ${currentDate}`,
+          italics: true,
+          size: 18,
+          color: "94A3B8",
+        }),
+      ],
+    }),
+  );
+
+  const doc = new Document({
+    styles: {
+      default: {
+        document: {
+          run: { font: "Segoe UI", size: 23, color: "1E293B" },
+        },
+      },
+    },
+    sections: [
+      {
+        properties: {
+          page: {
+            margin: {
+              top: convertInchesToTwip(0.9),
+              bottom: convertInchesToTwip(0.9),
+              left: convertInchesToTwip(1),
+              right: convertInchesToTwip(1),
+            },
+          },
+        },
+        children: docChildren,
+      },
+    ],
+  });
+
+  const buffer = await Packer.toBuffer(doc);
+  return buffer as Buffer;
+}
