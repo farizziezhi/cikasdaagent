@@ -235,54 +235,50 @@ export async function executeTranscribeMinutes(params: TranscribeParams) {
 
     console.log("[TranscribeMinutes] Mengirim materi multimodal ke Gemini (Dual Synthesis)...");
 
-    // 2. Kirim ke Gemini dengan System Prompt terintegrasi Memori Dinas
+    // 2. Kirim ke Gemini dengan System Prompt terintegrasi Memori Dinas (dengan fallback model)
     const systemPrompt = getMinutesSynthesisPrompt();
-    const geminiModel = genAI.getGenerativeModel({
-      model: "gemini-3.5-flash-lite",
-      systemInstruction: systemPrompt,
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: SchemaType.OBJECT,
-          properties: {
-            minutes: {
-              type: SchemaType.OBJECT,
-              properties: {
-                title: { type: SchemaType.STRING },
-                date_info: { type: SchemaType.STRING },
-                executive_summary: { type: SchemaType.STRING },
-                key_points: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                decisions: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                action_items: {
-                  type: SchemaType.ARRAY,
-                  items: {
-                    type: SchemaType.OBJECT,
-                    properties: {
-                      task: { type: SchemaType.STRING },
-                      pic: { type: SchemaType.STRING },
-                      deadline: { type: SchemaType.STRING }
-                    },
-                    required: ["task", "pic", "deadline"]
-                  }
+    const generationConfig = {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: SchemaType.OBJECT,
+        properties: {
+          minutes: {
+            type: SchemaType.OBJECT,
+            properties: {
+              title: { type: SchemaType.STRING },
+              date_info: { type: SchemaType.STRING },
+              executive_summary: { type: SchemaType.STRING },
+              key_points: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+              decisions: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+              action_items: {
+                type: SchemaType.ARRAY,
+                items: {
+                  type: SchemaType.OBJECT,
+                  properties: {
+                    task: { type: SchemaType.STRING },
+                    pic: { type: SchemaType.STRING },
+                    deadline: { type: SchemaType.STRING }
+                  },
+                  required: ["task", "pic", "deadline"]
                 }
-              },
-              required: ["title", "key_points", "decisions", "action_items"]
+              }
             },
-            news_article: {
-              type: SchemaType.OBJECT,
-              properties: {
-                headline: { type: SchemaType.STRING },
-                lead_paragraph: { type: SchemaType.STRING },
-                body_paragraphs: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                closing_paragraph: { type: SchemaType.STRING }
-              },
-              required: ["headline", "lead_paragraph", "body_paragraphs", "closing_paragraph"]
-            }
+            required: ["title", "key_points", "decisions", "action_items"]
           },
-          required: ["minutes", "news_article"]
-        }
+          news_article: {
+            type: SchemaType.OBJECT,
+            properties: {
+              headline: { type: SchemaType.STRING },
+              lead_paragraph: { type: SchemaType.STRING },
+              body_paragraphs: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+              closing_paragraph: { type: SchemaType.STRING }
+            },
+            required: ["headline", "lead_paragraph", "body_paragraphs", "closing_paragraph"]
+          }
+        },
+        required: ["minutes", "news_article"]
       }
-    });
+    } as const;
 
     const contentInput: any[] = [];
     if (geminiInlineParts.length > 0) {
@@ -290,7 +286,29 @@ export async function executeTranscribeMinutes(params: TranscribeParams) {
     }
     contentInput.push(`Berikut adalah materi kegiatan/rapat untuk disintesis:\n\n${combinedTextPrompt}`);
 
-    const geminiResult = await geminiModel.generateContent(contentInput);
+    const modelCandidates = ["gemini-3.5-flash-lite", "gemini-3.8-flash"];
+    let geminiResult: any = null;
+    let lastGeminiErr: any = null;
+
+    for (const modelName of modelCandidates) {
+      try {
+        const geminiModel = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: systemPrompt,
+          generationConfig: generationConfig as any,
+        });
+        geminiResult = await geminiModel.generateContent(contentInput);
+        break;
+      } catch (err: any) {
+        lastGeminiErr = err;
+        console.warn(`[TranscribeMinutes] Model ${modelName} gagal (${err?.message || err}), mencoba fallback...`);
+      }
+    }
+
+    if (!geminiResult) {
+      throw lastGeminiErr || new Error("Semua model Gemini gagal memproses materi rapat.");
+    }
+
     const parsed = JSON.parse(geminiResult.response.text());
 
     // Normalisasi struktur output

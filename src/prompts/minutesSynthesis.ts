@@ -59,7 +59,7 @@ BAGIAN 2: BERITA ACARA / SIARAN PERS KEDINASAN (CIKASDA NEWS)
   4. Arahan pimpinan / tanggapan pihak terkait: WAJIB ditulis sebagai KUTIPAN TIDAK LANGSUNG (mis. "Beliau menginstruksikan...", "Kepala Dinas menekankan...", "pihak Ombudsman mengapresiasi..."). Kutipan langsung bertanda petik ("...") HANYA boleh digunakan jika staf mengirim kutipan persis kata-per-kata di dalam input; JANGAN pernah mengarang kutipan langsung.
   5. Penutup (Closing): 1–2 kalimat komitmen atau harapan tindak lanjut yang mengalir wajar dan tidak berlebihan.
 - Anti-Halusinasi Fakta: Jika ada informasi penting (tanggal, tempat, nama/gelar/jabatan, angka, atau sumber) yang tidak tersedia di input staf, WAJIB tandai dengan [PERLU DICEK: <keterangan yang perlu dilengkapi>] dan JANGAN pernah mengarang fakta.
-- Anti-Slop: Hindari frasa klise AI seperti "menjadi saksi bisu", "harmonisasi yang membahana", "perjalanan transformatif", dan kata-kata hiperbolik lainnya. Gunakan bahasa jurnalistik birokrasi yang berbobot dan bermartabat.
+- Anti-Slop & Humanizer-ID: Hindari frasa klise AI ("menjadi saksi bisu", "harmonisasi yang membahana", "perjalanan transformatif", "secara keseluruhan"), hindari kalimat tanpa subjek jelas (mis. "Dalam rapat ini membahas..." -> ubah menjadi "Rapat ini membahas..."), kurangi verba ringan ("melakukan pembahasan" -> "membahas", "melakukan evaluasi" -> "mengevaluasi"), serta hindari nominalisasi bertumpuk. Gunakan bahasa jurnalistik birokrasi yang berbobot, jernih, dan natural.
 
 STRUKTUR OUTPUT JSON WAJIB:
 {
@@ -128,8 +128,8 @@ ATURAN PENULISAN KETAT (WAJIB DIPATUHI):
 6. Integritas Fakta & Anti-Halusinasi:
    - JANGAN mengarang nama, gelar, jabatan, tanggal, lokasi, nomor surat, maupun angka yang tidak ada dalam input.
    - Jika fakta wajib (tanggal, tempat, nama/jabatan pejabat, atau angka) tidak tercantum di input, tandai langsung di posisi terkait dengan format [PERLU DICEK: keterangan yang kurang].
-7. Anti-Slop:
-   - Gunakan bahasa Indonesia formal kedinasan yang lugas, bermartabat, dan faktual. Hindari ungkapan hiperbolik AI ("menjadi saksi bisu", "harmonisasi membahana", "perjalanan transformatif", dll).
+7. Anti-Slop & Humanizer-ID:
+   - Gunakan bahasa Indonesia formal kedinasan yang lugas, jernih, natural, dan faktual. Hindari ungkapan hiperbolik AI ("menjadi saksi bisu", "harmonisasi membahana", "perjalanan transformatif"), hindari kalimat tanpa subjek jelas ("Dalam kegiatan ini membahas..."), dan ganti verba ringan bertele-tele ("melakukan pemaparan" -> "memaparkan").
 
 STRUKTUR OUTPUT JSON WAJIB (HANYA news_article, TANPA notulen):
 {
