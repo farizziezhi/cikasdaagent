@@ -9,6 +9,7 @@ import { shouldChunk, splitIntoChunks, cleanupChunks } from "../audio/chunker.js
 import { uploadFile, downloadFile } from "../services/driveClient.js";
 import { logActivity } from "../services/auditLog.js";
 import { getMinutesSynthesisPrompt } from "../prompts/minutesSynthesis.js";
+import { normalizeChatId } from "../services/broadcast.js";
 import {
   generateMinutesDocx,
   ModernMinutesData,
@@ -116,11 +117,12 @@ function formatNewsTelegram(news: NewsArticleData): string {
  */
 async function sendTelegramText(chatId: string, htmlText: string): Promise<void> {
   const msgUrl = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`;
+  const cleanChatId = normalizeChatId(chatId);
   await fetch(msgUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      chat_id: chatId,
+      chat_id: cleanChatId,
       text: htmlText,
       parse_mode: "HTML"
     })
@@ -337,7 +339,7 @@ export async function executeTranscribeMinutes(params: TranscribeParams) {
       const fileBuffer = fs.readFileSync(tempDocxPath);
       const blob = new Blob([fileBuffer]);
       const formData = new FormData();
-      formData.append("chat_id", chatId);
+      formData.append("chat_id", normalizeChatId(chatId));
       formData.append("document", blob, fileName);
       formData.append(
         "caption",

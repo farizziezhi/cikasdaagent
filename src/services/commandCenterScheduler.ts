@@ -33,6 +33,13 @@
 import { ppidClient as defaultPpidClient, PpidClient } from "./ppidClient.js";
 import { siveraClient as defaultSiveraClient, SiveraClient } from "./siveraClient.js";
 import { apelinClient as defaultApelinClient, ApelinClient } from "./apelinClient.js";
+import {
+  HealthWatchdog,
+  MonitoredService,
+  checkStaleWordpressDrafts,
+  buildSiveraBottleneckMessage,
+  buildWeeklyExecutiveDigest,
+} from "./proactiveMonitors.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -236,10 +243,15 @@ export function buildSlaAlertMessage(
 
 export interface SchedulerCallbacks {
   sendBroadcast: (message: string) => Promise<void>;
+  sendAdminBroadcast?: (message: string) => Promise<void>;
 }
 
 export interface TickOptions {
   ppidClient?: PpidClient;
+  siveraClient?: SiveraClient;
+  apelinClient?: ApelinClient;
+  fetchFn?: typeof fetch;
+  envSource?: Record<string, string | undefined>;
 }
 
 // --- Penanda terkirim yang persisten (BARU di v1, dipakai juga v2) ---
@@ -293,11 +305,20 @@ function toWita(date: Date): Date {
   return new Date(utc + 8 * 3600000);
 }
 
+export type TriggerType =
+  | "MORNING_BRIEFING"
+  | "APEL_PAGI"
+  | "APEL_SORE"
+  | "SIVERA_BOTTLENECK"
+  | "STALE_DRAFTS"
+  | "WEEKLY_DIGEST";
+
 export class CommandCenterScheduler {
   private timer: NodeJS.Timeout | null = null;
   private sentMarkers: Set<string>;
   private statePath: string;
   private callbacks?: SchedulerCallbacks;
+  private watchdog: HealthWatchdog = new HealthWatchdog(3);
 
   constructor(callbacks?: SchedulerCallbacks, statePath?: string) {
     this.callbacks = callbacks;
@@ -305,7 +326,22 @@ export class CommandCenterScheduler {
     this.sentMarkers = loadMarkers(this.statePath);
   }
 
-  public shouldTrigger(now: Date = new Date()): "MORNING_BRIEFING" | "APEL_PAGI" | "APEL_SORE" | null {
+  public async reportHealth(
+    service: MonitoredService,
+    ok: boolean,
+    errorMsg?: string,
+  ): Promise<string | null> {
+    const alert = ok
+      ? this.watchdog.recordSuccess(service)
+      : this.watchdog.recordFailure(service, errorMsg || "Kesalahan koneksi");
+
+    if (alert && this.callbacks?.sendAdminBroadcast) {
+      await this.callbacks.sendAdminBroadcast(alert);
+    }
+    return alert;
+  }
+
+  public shouldTrigger(now: Date = new Date()): TriggerType | null {
     const wita = toWita(now);
     const day = wita.getDay();
     const hours = wita.getHours();
@@ -332,6 +368,26 @@ export class CommandCenterScheduler {
       }
     }
 
+    // Hari kerja (Senin-Jumat) 10:00 WITA -> Deteksi Surat Macet SIVERA (> 2 hari kerja)
+    if (day >= 1 && day <= 5 && hours === 10 && minutes >= 0 && minutes <= 5) {
+      const marker = `sivera-bottleneck-${dateStr}`;
+      if (!this.sentMarkers.has(marker)) {
+        this.sentMarkers.add(marker);
+        saveMarkers(this.statePath, this.sentMarkers);
+        return "SIVERA_BOTTLENECK";
+      }
+    }
+
+    // Hari kerja (Senin-Jumat) 15:00 WITA -> Pengingat Draf WordPress Mengendap (> 24 jam)
+    if (day >= 1 && day <= 5 && hours === 15 && minutes >= 0 && minutes <= 5) {
+      const marker = `stale-drafts-${dateStr}`;
+      if (!this.sentMarkers.has(marker)) {
+        this.sentMarkers.add(marker);
+        saveMarkers(this.statePath, this.sentMarkers);
+        return "STALE_DRAFTS";
+      }
+    }
+
     // Kamis 15:45 WITA -> Pengingat Apel Sore
     if (day === 4 && hours === 15 && minutes >= 45 && minutes <= 50) {
       const marker = `apel-sore-${dateStr}`;
@@ -339,6 +395,16 @@ export class CommandCenterScheduler {
         this.sentMarkers.add(marker);
         saveMarkers(this.statePath, this.sentMarkers);
         return "APEL_SORE";
+      }
+    }
+
+    // Jumat 17:00 WITA -> Ringkasan Mingguan Eksekutif PPID
+    if (day === 5 && hours === 17 && minutes >= 0 && minutes <= 5) {
+      const marker = `weekly-digest-${dateStr}`;
+      if (!this.sentMarkers.has(marker)) {
+        this.sentMarkers.add(marker);
+        saveMarkers(this.statePath, this.sentMarkers);
+        return "WEEKLY_DIGEST";
       }
     }
 
@@ -375,8 +441,10 @@ export class CommandCenterScheduler {
     let items;
     try {
       items = await ppid.getActivePermohonan(now);
-    } catch (err) {
+      await this.reportHealth("ppid-digital", true);
+    } catch (err: any) {
       console.error("[CommandCenterScheduler] gagal cek SLA:", err);
+      await this.reportHealth("ppid-digital", false, err?.message || String(err));
       return null;
     }
     const wita = toWita(now);
@@ -412,11 +480,47 @@ export class CommandCenterScheduler {
     let message: string | null = null;
 
     if (trigger === "MORNING_BRIEFING") {
-      message = await buildMorningBriefing({ date: now });
+      message = await buildMorningBriefing({
+        ppidClient: options.ppidClient,
+        siveraClient: options.siveraClient,
+        apelinClient: options.apelinClient,
+        date: now,
+      });
     } else if (trigger === "APEL_PAGI") {
       message = buildApelReminder("MORNING");
     } else if (trigger === "APEL_SORE") {
       message = buildApelReminder("AFTERNOON");
+    } else if (trigger === "SIVERA_BOTTLENECK") {
+      const sivera = options.siveraClient ?? defaultSiveraClient;
+      try {
+        const stalled = await sivera.getStalledSurat(2, now);
+        await this.reportHealth("sivera", true);
+        message = buildSiveraBottleneckMessage(stalled);
+      } catch (err: any) {
+        console.error("[CommandCenterScheduler] gagal cek bottleneck SIVERA:", err);
+        await this.reportHealth("sivera", false, err?.message || String(err));
+      }
+    } else if (trigger === "STALE_DRAFTS") {
+      const res = await checkStaleWordpressDrafts({
+        fetchFn: options.fetchFn,
+        envSource: options.envSource,
+        now,
+      });
+      if (res.error) {
+        await this.reportHealth("wordpress", false, res.error);
+      } else {
+        await this.reportHealth("wordpress", true);
+      }
+      message = res.message;
+    } else if (trigger === "WEEKLY_DIGEST") {
+      message = await buildWeeklyExecutiveDigest({
+        ppidClient: options.ppidClient,
+        siveraClient: options.siveraClient,
+        apelinClient: options.apelinClient,
+        fetchFn: options.fetchFn,
+        envSource: options.envSource,
+        date: now,
+      });
     } else {
       // Tidak ada pemicu jam -> cek SLA kritis (sekali per jam kerja).
       message = await this.checkSlaAlerts(now, options.ppidClient);

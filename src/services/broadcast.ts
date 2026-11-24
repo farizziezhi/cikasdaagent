@@ -129,3 +129,32 @@ export async function sendBroadcast(message: string): Promise<void> {
     }
   }
 }
+
+/**
+ * Ambil daftar chat_id admin dari WHITELIST_CHAT_IDS (dinormalisasi & dedup).
+ * Jika WHITELIST_CHAT_IDS kosong, fallback ke getBroadcastChatIds() agar alert teknis tidak hilang.
+ */
+export async function getAdminChatIds(): Promise<string[]> {
+  const admins = [...new Set(splitIds(process.env.WHITELIST_CHAT_IDS))];
+  if (admins.length > 0) return admins;
+  return getBroadcastChatIds();
+}
+
+/**
+ * Kirim pesan khusus ke admin teknis (mis. peringatan Health Watchdog).
+ */
+export async function sendAdminBroadcast(message: string): Promise<void> {
+  const adminIds = await getAdminChatIds();
+  if (adminIds.length === 0) {
+    console.warn("[broadcast] tidak ada penerima admin untuk alert teknis.");
+    return;
+  }
+  for (const chatId of adminIds) {
+    try {
+      await sendTelegramMessage(chatId, message);
+      console.log(`[broadcast:admin] terkirim ke ${chatId}`);
+    } catch (err) {
+      console.error(`[broadcast:admin] gagal ke ${chatId}:`, err);
+    }
+  }
+}

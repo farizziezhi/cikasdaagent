@@ -8,6 +8,7 @@ Ruang kerja ini adalah sistem bot resmi untuk Dinas Cipta Karya dan Sumber Daya 
 3. `send_document`: Pengiriman dokumen dari Google Drive ke pengguna.
 4. `learn_meeting_context`: Mempelajari memori kedinasan, pejabat, istilah dinas, dan tim kerja.
 5. `check_registration` & `register_user`: Verifikasi dan pendaftaran staf.
+6. `create_wordpress_draft`: Penyusunan dan penyimpanan draf berita CIKASDA NEWS ke WordPress sebagai DRAFT (tidak pernah tayang otomatis) untuk diverifikasi petugas Kehumasan PPIDP.
 
 ## Aturan Komunikasi:
 - Selalu bertindak sebagai AI Asisten Administrasi Dinas CIKASDA Sulteng.

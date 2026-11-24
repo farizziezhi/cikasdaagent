@@ -79,4 +79,32 @@ Untuk itu, Kadis CIKASDA menginstruksikan kepada para pejabat administrator dan 
 
 Melalui arahan tersebut, seluruh ASN di lingkungan Dinas CIKASDA Provinsi Sulawesi Tengah diharapkan semakin memperkuat budaya pelayanan yang berorientasi kepada masyarakat. Dengan demikian, pelaksanaan penilaian oleh Ombudsman dapat menjadi kesempatan untuk menunjukkan komitmen bersama dalam mewujudkan pelayanan publik yang profesional, transparan, responsif, dan akuntabel.
 
+---
+
+### CONTOH 5: Evaluasi Pelayanan Publik & Inovasi (Gaya Ringkas — Ombudsman RI / SINTUWU)
+- **Sumber Referensi:** https://cikasda.sultengprov.go.id/2026/11/09/dinas-cikasda-sulteng-sambut-tim-ombudsman-ri-dalam-evaluasi-pelayanan-publik-dan-inovasi-sintuwu/ (9 November 2026, byline PPID, kategori FAKTUAL & PPID CIKASDA)
+- **Pola Gaya Ringkas (4–5 paragraf, 150–350 kata):** Judul aktif menyebutkan dinas, tamu, dan fokus evaluasi; lead diawali `CIKASDA NEWS –` berisi lokasi, waktu, dan kegiatan; paragraf isi menyebutkan pejabat pendamping serta tamu secara presisi bersama data konkret (misalnya 14 komponen standar pelayanan dan inovasi SINTUWU); apresiasi dan catatan disampaikan secara **tidak langsung** tanpa mengarang kutipan bertanda petik; ditutup 1 kalimat komitmen peningkatan kualitas pelayanan publik yang transparan, cepat, dan akuntabel tanpa bullet maupun tabel.
+- **Contoh Gaya Penulisan (1 Paragraf Lead & Isi Terstruktur):**
+
+CIKASDA NEWS – Dinas Cipta Karya dan Sumber Daya Air (CIKASDA) Provinsi Sulawesi Tengah menyambut kunjungan tim Ombudsman Republik Indonesia Perwakilan Sulawesi Tengah dalam rangka evaluasi penyelenggaraan pelayanan publik serta pemaparan inovasi SINTUWU, bertempat di lingkungan Kantor Dinas CIKASDA, Palu, Senin (9/11/2026). Dalam pertemuan tersebut, jajaran perangkat daerah memaparkan pemenuhan 14 komponen standar pelayanan serta mekanisme pengelolaan aduan dan informasi publik, sementara pihak Ombudsman mengapresiasi inovasi yang telah berjalan sekaligus menekankan konsistensi penerapan standar pelayanan di seluruh lini kerja.
+
+---
+
+### CONTOH 6: Rapat Evaluasi Realisasi Fisik dan Keuangan (Gaya Ringkas — EPPRA)
+- **Sumber Referensi:** https://cikasda.sultengprov.go.id/2026/10/14/kepala-dinas-cikasda-sulteng-dr-andi-ruly-djanggola-se-m-si-pimpin-rapat-evaluasi-dan-pengendalian-realisasi-fisik-dan-keuangan-eppra-oktober-2026/ (14 Oktober 2026, byline PPID, kategori FAKTUAL & PPID CIKASDA)
+- **Pola Gaya Ringkas (4–5 paragraf, 150–350 kata):** Judul Title Case mencantumkan nama dan gelar lengkap pimpinan di depan (`Kepala Dinas CIKASDA Sulteng, Dr. Andi Ruly Djanggola, SE., M.Si. Pimpin ...`); paragraf kedua merinci pejabat pendamping (Fungsional Perencana, Kasubag Umum dan Kepegawaian, serta jajaran teknis); arahan pimpinan disampaikan secara **tidak langsung** (`"Beliau menginstruksikan..."`, `"Kepala Dinas menekankan..."`); seluruh alur disajikan dalam paragraf naratif padat tanpa bullet points maupun subjudul.
+- **Contoh Gaya Penulisan (1 Paragraf Lead & Arahan Tidak Langsung):**
+
+CIKASDA NEWS – Kepala Dinas Cipta Karya dan Sumber Daya Air (CIKASDA) Provinsi Sulawesi Tengah, Dr. Andi Ruly Djanggola, SE., M.Si., memimpin Rapat Evaluasi dan Pengendalian Realisasi Fisik dan Keuangan (EPPRA) periode Oktober 2026 bersama jajaran pejabat struktural, fungsional perencana, dan pelaksana teknis kegiatan di Aula Dinas CIKASDA, Palu, Rabu (14/10/2026). Dalam arahannya, beliau menginstruksikan seluruh penanggung jawab paket kegiatan untuk mempercepat progres fisik di lapangan seiring tertib administrasi pertanggungjawaban keuangan guna memastikan target serapan triwulan berjalan sesuai jadwal.
+
+---
+
+### CONTOH 7: Pemaparan Inovasi & Koordinasi Teknis (Gaya Ringkas — Tim Analis Gubernur)
+- **Sumber Referensi:** https://cikasda.sultengprov.go.id/2026/10/14/pemaparan-inovasi-oleh-dinas-cikasda-bersama-tim-analis-gubernur-sulawesi-tengah/ (14 Oktober 2026, byline PPID, kategori FAKTUAL & PPID CIKASDA)
+- **Pola Gaya Ringkas (4–6 paragraf, 150–350 kata):** Menekankan substansi pemaparan inovasi dan angka riil persis dari bahan kegiatan (misalnya cakupan 30 Daerah Irigasi) tanpa melebih-lebihkan atau menambah angka di luar input; respon peserta/tim analis dirangkum melalui kalimat tidak langsung; ditutup dengan 1–2 kalimat komitmen tindak lanjut secara proporsional.
+- **Contoh Gaya Penulisan (1 Paragraf Substansi & Angka Konkret):**
+
+CIKASDA NEWS – Dinas Cipta Karya dan Sumber Daya Air (CIKASDA) Provinsi Sulawesi Tengah melaksanakan pemaparan inovasi daerah bersama Tim Analis Gubernur Sulawesi Tengah terkait penguatan pengelolaan data infrastruktur keairan yang mencakup 30 Daerah Irigasi kewenangan provinsi, bertempat di Palu, Rabu (14/10/2026). Melalui pemaparan tersebut, jajaran teknis menjelaskan alur pemutakhiran data dan pemanfaatan sistem pelaporan terpadu sebagai instrumen pendukung pengambilan keputusan pimpinan, dengan komitmen bersama untuk menindaklanjuti masukan penyempurnaan pada tahapan implementasi berikutnya.
+
+
 

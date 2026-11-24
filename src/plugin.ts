@@ -1,7 +1,8 @@
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { Type } from "typebox";
 import { CommandCenterScheduler } from "./services/commandCenterScheduler.js";
-import { sendBroadcast } from "./services/broadcast.js";
+import { sendBroadcast, sendAdminBroadcast } from "./services/broadcast.js";
+import { RealtimeWatcher } from "./services/realtimeWatcher.js";
 
 export default definePluginEntry({
   id: "ppid-agent-tools",
@@ -266,7 +267,52 @@ export default definePluginEntry({
       }
     });
 
-    console.log("[OpenClaw] PPID tools registered successfully (11 tools: Notulensi, Arsip, Memori, PPID SLA Watchdog, SIVERA Tracking, APEL-IN Presence, & Morning Briefing).");
+    // 12. Tool: create_wordpress_draft
+    api.registerTool({
+      name: "create_wordpress_draft",
+      label: "Create WordPress Draft (CIKASDA NEWS)",
+      description:
+        "Menyimpan draf berita CIKASDA NEWS ke WordPress sebagai DRAFT (tidak pernah tayang otomatis). Panggil setelah draf berita disusun dari bahan staf dengan format 4-6 paragraf (150-350 kata), kutipan tidak langsung kecuali staf mengirim kutipan persis kata-per-kata, dan tanda [PERLU DICEK: ...] bila ada fakta kosong. Petugas Kehumasan PPIDP memeriksa dan menayangkan manual di WP Admin.",
+      parameters: Type.Object({
+        headline: Type.String({ description: "Judul berita aktif (Title Case)" }),
+        lead_paragraph: Type.String({
+          description: "Paragraf pembuka 5W+1H diawali 'CIKASDA NEWS – ...'",
+        }),
+        body_paragraphs: Type.Array(Type.String(), {
+          description: "Daftar paragraf isi berita (2-4 paragraf)",
+        }),
+        closing_paragraph: Type.String({
+          description: "Paragraf penutup harapan atau komitmen tindak lanjut",
+        }),
+        image_file_path: Type.Optional(
+          Type.String({ description: "Path lokal foto utama kegiatan (opsional, JPEG/PNG/WebP/GIF)" }),
+        ),
+        categories: Type.Optional(
+          Type.Array(Type.Number(), {
+            description: "Daftar ID kategori WordPress (opsional, default [3, 7] untuk FAKTUAL & PPID CIKASDA)",
+          }),
+        ),
+        chat_id: Type.String({ description: "Chat ID peminta" }),
+      }),
+      async execute(_id, params: any) {
+        const { executeCreateWordpressDraft } = await import("./tools/wordpressDraft.js");
+        const result = await executeCreateWordpressDraft({
+          headline: params.headline,
+          lead_paragraph: params.lead_paragraph,
+          body_paragraphs: params.body_paragraphs,
+          closing_paragraph: params.closing_paragraph,
+          image_file_path: params.image_file_path,
+          categories: params.categories,
+          chat_id: params.chat_id,
+        });
+        return {
+          content: [{ type: "text", text: JSON.stringify(result) }],
+          details: result,
+        };
+      },
+    });
+
+    console.log("[OpenClaw] PPID tools registered successfully (12 tools: Notulensi, Arsip, Memori, PPID SLA Watchdog, SIVERA Tracking, APEL-IN Presence, Morning Briefing, & WordPress Draft CIKASDA NEWS).");
 
     // --- Scheduler proaktif (PATCH GABUNGAN 2026-11-17) ---
     // Inilah yang selama ini hilang: scheduler dibuat + start() dipanggil,
@@ -275,11 +321,14 @@ export default definePluginEntry({
     const g = globalThis as unknown as { __cikasdaSchedulerStarted?: boolean };
     if (!g.__cikasdaSchedulerStarted) {
       g.__cikasdaSchedulerStarted = true;
-      const scheduler = new CommandCenterScheduler({ sendBroadcast });
+      const scheduler = new CommandCenterScheduler({ sendBroadcast, sendAdminBroadcast });
       scheduler.start(60_000); // cek tiap 1 menit
       console.log(
-        "[OpenClaw] CommandCenterScheduler started (briefing 08:00, apel Senin 06:45 & Kamis 15:45, cek SLA tiap jam kerja)",
+        "[OpenClaw] CommandCenterScheduler started (briefing 08:00, bottleneck SIVERA 10:00, stale drafts WP 15:00, weekly digest Jumat 17:00, apel Senin 06:45 & Kamis 15:45, cek SLA tiap jam kerja)",
       );
+
+      const realtimeWatcher = new RealtimeWatcher({ sendBroadcast });
+      realtimeWatcher.start();
     }
   }
 }) as any;

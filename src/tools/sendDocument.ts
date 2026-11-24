@@ -1,6 +1,7 @@
 import { env } from "../config/env.js";
 import { getFileMetadata, downloadFile } from "../services/driveClient.js";
 import { logActivity } from "../services/auditLog.js";
+import { normalizeChatId } from "../services/broadcast.js";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -16,10 +17,11 @@ import crypto from "crypto";
  */
 async function sendTelegramMessage(chatId: string, text: string) {
   const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`;
+  const cleanChatId = normalizeChatId(chatId);
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text: text })
+    body: JSON.stringify({ chat_id: cleanChatId, text: text })
   });
 
   if (!response.ok) {
@@ -32,12 +34,13 @@ async function sendTelegramMessage(chatId: string, text: string) {
  */
 async function sendTelegramDocument(chatId: string, filePath: string, fileName: string) {
   const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendDocument`;
+  const cleanChatId = normalizeChatId(chatId);
   
   const buffer = fs.readFileSync(filePath);
   const blob = new Blob([buffer]);
   
   const formData = new FormData();
-  formData.append("chat_id", chatId);
+  formData.append("chat_id", cleanChatId);
   formData.append("document", blob, fileName);
 
   const response = await fetch(url, {

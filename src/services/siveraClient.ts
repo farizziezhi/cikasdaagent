@@ -1,5 +1,22 @@
 import pg from "pg";
 import { env } from "../config/env.js";
+import { isWorkingDay } from "./businessDays.js";
+
+function countElapsedBusinessDays(startDate: Date, endDate: Date): number {
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+  if (end <= start) return 0;
+
+  let days = 0;
+  const cur = new Date(start);
+  while (cur < end) {
+    cur.setDate(cur.getDate() + 1);
+    if (isWorkingDay(cur)) days++;
+  }
+  return days;
+}
 
 const { Pool } = pg;
 
@@ -68,12 +85,23 @@ export interface SiveraPendingStats {
   totalActiveCount: number;
 }
 
+export interface StalledSuratItem {
+  id: string;
+  nomorSurat: string;
+  pengirim: string;
+  perihal: string;
+  statusSaatIni: SiveraStatusSurat;
+  tanggalDiterima: string;
+  businessDaysStalled: number;
+}
+
 export interface SiveraClientOptions {
   connectionString?: string;
   customSearchSurat?: (keyword: string) => Promise<SuratRow[]>;
   customGetDisposisi?: (suratId: string) => Promise<DisposisiRow[]>;
   customGetAuditLogs?: (suratId: string) => Promise<AuditLogRow[]>;
   customGetStats?: () => Promise<SiveraPendingStats>;
+  customGetStalledSurat?: (minBusinessDays?: number) => Promise<StalledSuratItem[]>;
 }
 
 export function mapStatusToCheckpoint(status: SiveraStatusSurat): {
@@ -103,12 +131,14 @@ export class SiveraClient {
   private customGetDisposisi?: (suratId: string) => Promise<DisposisiRow[]>;
   private customGetAuditLogs?: (suratId: string) => Promise<AuditLogRow[]>;
   private customGetStats?: () => Promise<SiveraPendingStats>;
+  private customGetStalledSurat?: (minBusinessDays?: number) => Promise<StalledSuratItem[]>;
 
   constructor(options: SiveraClientOptions = {}) {
     this.customSearchSurat = options.customSearchSurat;
     this.customGetDisposisi = options.customGetDisposisi;
     this.customGetAuditLogs = options.customGetAuditLogs;
     this.customGetStats = options.customGetStats;
+    this.customGetStalledSurat = options.customGetStalledSurat;
 
     const connectionString = options.connectionString ?? env.SIVERA_DATABASE_URL;
 
@@ -268,6 +298,58 @@ export class SiveraClient {
       undisposedCount: Number(row.undisposedCount) || 0,
       totalActiveCount: Number(row.totalActiveCount) || 0,
     };
+  }
+
+  /**
+   * Ambil daftar surat yang tertahan pada tahap verifikasi loket atau disposisi Kadis
+   * melebihi ambang hari kerja (default > 2 hari kerja).
+   */
+  public async getStalledSurat(
+    minBusinessDays: number = 2,
+    referenceDate: Date = new Date(),
+  ): Promise<StalledSuratItem[]> {
+    if (this.customGetStalledSurat) {
+      return this.customGetStalledSurat(minBusinessDays);
+    }
+
+    if (!this.pool) {
+      return [];
+    }
+
+    const query = `
+      SELECT
+        id,
+        "nomorSurat",
+        pengirim,
+        perihal,
+        "tanggalDiterima",
+        "statusSaatIni"
+      FROM "Surat"
+      WHERE "statusSaatIni" IN ('DIDAFTARKAN_PPID', 'DITERIMA_KEARSIPAN')
+      ORDER BY "tanggalDiterima" ASC
+      LIMIT 25;
+    `;
+    const res = await this.pool.query(query);
+    const stalled: StalledSuratItem[] = [];
+
+    for (const row of res.rows) {
+      const received = new Date(row.tanggalDiterima);
+      if (Number.isNaN(received.getTime())) continue;
+      const businessDays = countElapsedBusinessDays(received, referenceDate);
+      if (businessDays > minBusinessDays) {
+        stalled.push({
+          id: row.id,
+          nomorSurat: row.nomorSurat,
+          pengirim: row.pengirim,
+          perihal: row.perihal,
+          statusSaatIni: row.statusSaatIni,
+          tanggalDiterima: received.toLocaleDateString("id-ID", { dateStyle: "medium" }),
+          businessDaysStalled: businessDays,
+        });
+      }
+    }
+
+    return stalled;
   }
 
   public async close(): Promise<void> {

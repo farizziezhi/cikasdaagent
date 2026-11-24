@@ -89,11 +89,21 @@ const envSchema = z.object({
     .default("")
     .describe("Anon/Service Role key Supabase PPID-Digital"),
 
-  // === Integrasi SIVERA (Neon PostgreSQL) ===
+  // === Integrasi SIVERA (Neon/Supabase PostgreSQL + Realtime) ===
   SIVERA_DATABASE_URL: z
     .string()
     .default("")
-    .describe("Database connection string Neon PostgreSQL SIVERA"),
+    .describe("Database connection string PostgreSQL SIVERA"),
+
+  SIVERA_SUPABASE_URL: z
+    .string()
+    .default("")
+    .describe("URL Supabase project SIVERA (opsional, untuk Realtime surat & disposisi)"),
+
+  SIVERA_SUPABASE_SERVICE_KEY: z
+    .string()
+    .default("")
+    .describe("Service Role / Anon key Supabase SIVERA (opsional, untuk Realtime)"),
 
   // === Integrasi APEL-IN (Neon PostgreSQL) ===
   APELIN_DATABASE_URL: z
@@ -111,6 +121,27 @@ const envSchema = z.object({
     .string()
     .default("true")
     .describe("Kirim broadcast ke seluruh pengguna terdaftar di Sheet ('true' atau 'false')"),
+
+  // === Integrasi WordPress CIKASDA NEWS (opsional, DRAFT-only) ===
+  WP_BASE_URL: z
+    .string()
+    .default("https://cikasda.sultengprov.go.id")
+    .describe("Base URL WordPress, tanpa trailing slash"),
+
+  WP_USER: z
+    .string()
+    .default("")
+    .describe("Username WordPress khusus bot (mis. ppid-bot)"),
+
+  WP_APP_PASSWORD: z
+    .string()
+    .default("")
+    .describe("Application Password user bot (bukan password login WP)"),
+
+  WP_CATEGORY_ID: z
+    .string()
+    .default("3,7")
+    .describe("Daftar ID kategori WordPress dipisah koma (default: '3,7' untuk FAKTUAL + PPID CIKASDA)"),
 });
 
 
