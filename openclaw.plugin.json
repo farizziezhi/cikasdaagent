@@ -14,7 +14,9 @@
       "extend_ppid_sla",
       "track_sivera_surat",
       "check_apelin_session",
-      "trigger_morning_digest"
+      "trigger_morning_digest",
+      "create_wordpress_draft",
+      "create_news_draft"
     ]
 
 
