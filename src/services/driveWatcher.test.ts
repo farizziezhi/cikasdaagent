@@ -29,10 +29,10 @@ test("DriveWatcher: seed file lama pada run pertama, lalu proses file baru dan a
       downloadFileFn: async (_id, dest) => {
         fs.writeFileSync(dest, Buffer.from("dummy-media"));
       },
-      processNewsDraftFn: async (_localPath, fileName) => ({
+      processNewsDraftFn: async (_localPaths, sourceLabel) => ({
         success: true,
         driveLink: "https://drive.google.com/file/d/doc-999/view",
-        headline: `Berita Otomatis dari ${fileName}`,
+        headline: `Berita Otomatis dari ${sourceLabel}`,
       }),
     },
   );
@@ -63,4 +63,64 @@ test("DriveWatcher: seed file lama pada run pertama, lalu proses file baru dan a
   const count3 = await watcher.pollOnce();
   assert.equal(count3, 0);
   assert.equal(broadcasts.length, 1);
+});
+
+test("DriveWatcher: subfolder kegiatan menggabungkan banyak file menjadi 1 draf berita", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "drive-subfolder-"));
+  const statePath = join(dir, "drive-watcher-processed.json");
+  const broadcasts: Array<{ msg: string; opts?: SendBroadcastOptions }> = [];
+  let receivedPathsCount = 0;
+
+  const watcher = new DriveWatcher(
+    {
+      sendBroadcast: async (msg, opts) => {
+        broadcasts.push({ msg, opts });
+      },
+    },
+    {
+      folderId: "root-watch-folder",
+      statePath,
+      seedOnEmptyState: false,
+      listFilesFn: async (folderId) => {
+        if (folderId === "root-watch-folder") {
+          return [
+            {
+              id: "sub-eppra",
+              name: "Rapat_EPPRA_25Nov",
+              mimeType: "application/vnd.google-apps.folder",
+            },
+          ];
+        }
+        if (folderId === "sub-eppra") {
+          return [
+            { id: "f1", name: "rekaman.mp3", mimeType: "audio/mpeg" },
+            { id: "f2", name: "slide.pdf", mimeType: "application/pdf" },
+            { id: "f3", name: "foto.jpg", mimeType: "image/jpeg" },
+          ];
+        }
+        return [];
+      },
+      downloadFileFn: async (_id, dest) => {
+        fs.writeFileSync(dest, Buffer.from("dummy"));
+      },
+      processNewsDraftFn: async (localPaths) => {
+        receivedPathsCount = localPaths.length;
+        return {
+          success: true,
+          driveLink: "https://drive.google.com/file/d/combined-doc/view",
+          headline: "Berita Gabungan Rapat EPPRA",
+        };
+      },
+    },
+  );
+
+  const count = await watcher.pollOnce();
+  assert.equal(count, 1);
+  assert.equal(receivedPathsCount, 3);
+  assert.equal(broadcasts.length, 1);
+  assert.match(broadcasts[0].msg, /Rapat_EPPRA_25Nov \(3 berkas digabung\)/);
+  assert.equal(
+    broadcasts[0].opts?.replyMarkup?.inline_keyboard[0][0].url,
+    "https://drive.google.com/file/d/combined-doc/view",
+  );
 });
