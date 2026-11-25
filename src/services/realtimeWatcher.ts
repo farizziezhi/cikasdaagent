@@ -1,13 +1,21 @@
 import { createClient, type RealtimeChannel, type SupabaseClient } from "@supabase/supabase-js";
 import { env } from "../config/env.js";
 import { ppidClient as defaultPpidClient, PpidClient, maskNik } from "./ppidClient.js";
+import { searchFiles } from "./driveClient.js";
+import type { SendBroadcastOptions, TelegramInlineKeyboardMarkup } from "./broadcast.js";
+
+export interface ArchiveMatchSnippet {
+  file_id: string;
+  name: string;
+}
 
 export interface RealtimeWatcherCallbacks {
-  sendBroadcast: (message: string) => Promise<void>;
+  sendBroadcast: (message: string, options?: SendBroadcastOptions) => Promise<void>;
 }
 
 export interface RealtimeWatcherDeps {
   ppidClient?: PpidClient;
+  searchArchiveFn?: (keywords: string) => Promise<ArchiveMatchSnippet[]>;
   ppidSupabaseUrl?: string;
   ppidSupabaseKey?: string;
   siveraSupabaseUrl?: string;
@@ -42,20 +50,70 @@ export interface NewSiveraDisposisiPayload {
   bidangTujuanNama?: string;
 }
 
-export function formatNewPermohonanAlert(item: NewPermohonanPayload): string {
+export function formatNewPermohonanAlert(
+  item: NewPermohonanPayload,
+  archiveMatches: ArchiveMatchSnippet[] = [],
+): string {
   const jenis = item.jenis_informasi || "Permohonan Informasi Publik";
   const pemohon = item.pemohonNama || "Pemohon Umum";
   const nikMasked = item.pemohonNikMasked || "-";
   const deadline = item.deadline_awal || "10 hari kerja sejak diterima";
 
-  return [
+  const lines = [
     `🔔 <b>PERMOHONAN INFORMASI BARU [#${item.id}]</b>`,
     `• <b>Informasi Diminta:</b> ${jenis}`,
     `• <b>Pemohon:</b> ${pemohon} (NIK: ${nikMasked})`,
     `• <b>Tenggat Awal SLA:</b> ${deadline}`,
-    "",
-    `💡 <i>Balas pesan ini atau ketik 'cek tiket #${item.id}' untuk melihat rincian permohonan.</i>`,
-  ].join("\n");
+  ];
+
+  if (archiveMatches.length > 0) {
+    lines.push("");
+    lines.push(`📁 <b>Arsip Drive Terkait (${archiveMatches.length} ditemukan):</b>`);
+    for (const m of archiveMatches.slice(0, 3)) {
+      lines.push(`• ${m.name}`);
+    }
+  } else {
+    lines.push(`• <b>Arsip Drive:</b> Belum ditemukan berkas otomatis — perlu koordinasi dengan bidang terkait.`);
+  }
+
+  lines.push("");
+  lines.push(`💡 <i>Gunakan tombol di bawah atau balas 'cek tiket #${item.id}' untuk menindaklanjuti.</i>`);
+
+  return lines.join("\n");
+}
+
+export function buildNewPermohonanButtons(
+  ticketId: number,
+  archiveMatches: ArchiveMatchSnippet[] = [],
+): TelegramInlineKeyboardMarkup {
+  const rows: TelegramInlineKeyboardMarkup["inline_keyboard"] = [
+    [
+      { text: "📄 Detail Tiket", callback_data: `cek tiket #${ticketId}` },
+      { text: "⏱️ Perpanjang +7 Hari", callback_data: `perpanjang permohonan ${ticketId}` },
+    ],
+  ];
+
+  for (const m of archiveMatches.slice(0, 2)) {
+    const shortName = m.name.length > 28 ? `${m.name.slice(0, 25)}...` : m.name;
+    rows.push([
+      {
+        text: `📁 ${shortName}`,
+        url: `https://drive.google.com/file/d/${m.file_id}/view`,
+      },
+    ]);
+  }
+
+  return { inline_keyboard: rows };
+}
+
+export function buildNewSiveraSuratButtons(nomorSurat?: string): TelegramInlineKeyboardMarkup | undefined {
+  const clean = (nomorSurat || "").trim();
+  if (!clean) return undefined;
+  return {
+    inline_keyboard: [
+      [{ text: "📍 Lacak Posisi Surat", callback_data: `lacak surat ${clean.slice(0, 48)}` }],
+    ],
+  };
 }
 
 export function formatNewSiveraSuratAlert(item: NewSiveraSuratPayload): string {
@@ -90,6 +148,7 @@ export function formatNewSiveraDisposisiAlert(item: NewSiveraDisposisiPayload): 
 export class RealtimeWatcher {
   private callbacks: RealtimeWatcherCallbacks;
   private ppidClient: PpidClient;
+  private searchArchiveFn: (keywords: string) => Promise<ArchiveMatchSnippet[]>;
   private ppidSupabaseUrl: string;
   private ppidSupabaseKey: string;
   private siveraSupabaseUrl: string;
@@ -104,6 +163,12 @@ export class RealtimeWatcher {
   constructor(callbacks: RealtimeWatcherCallbacks, deps: RealtimeWatcherDeps = {}) {
     this.callbacks = callbacks;
     this.ppidClient = deps.ppidClient ?? defaultPpidClient;
+    this.searchArchiveFn =
+      deps.searchArchiveFn ??
+      (async (keywords: string) => {
+        const rows = await searchFiles({ keywords });
+        return rows.map((r) => ({ file_id: r.file_id, name: r.name }));
+      });
     this.ppidSupabaseUrl = (deps.ppidSupabaseUrl ?? env.PPID_SUPABASE_URL ?? "").trim();
     this.ppidSupabaseKey = (deps.ppidSupabaseKey ?? env.PPID_SUPABASE_SERVICE_KEY ?? "").trim();
     this.siveraSupabaseUrl = (deps.siveraSupabaseUrl ?? env.SIVERA_SUPABASE_URL ?? "").trim();
@@ -154,8 +219,20 @@ export class RealtimeWatcher {
       console.warn("[RealtimeWatcher] Gagal mengambil detail profil permohonan, pakai data event:", err);
     }
 
-    const message = formatNewPermohonanAlert(payload);
-    await this.callbacks.sendBroadcast(message);
+    // Auto-cari arsip Google Drive terkait topik permohonan (aman jika kosong/offline)
+    let archiveMatches: ArchiveMatchSnippet[] = [];
+    const searchTopic = (payload.jenis_informasi || "").trim();
+    if (searchTopic.length >= 3) {
+      try {
+        archiveMatches = await this.searchArchiveFn(searchTopic);
+      } catch (err) {
+        console.warn("[RealtimeWatcher] Auto-cari arsip Drive gagal, lanjut tanpa lampiran:", err);
+      }
+    }
+
+    const message = formatNewPermohonanAlert(payload, archiveMatches);
+    const replyMarkup = buildNewPermohonanButtons(id, archiveMatches);
+    await this.callbacks.sendBroadcast(message, { replyMarkup });
     return message;
   }
 
@@ -172,7 +249,8 @@ export class RealtimeWatcher {
       perihal: rawRow.perihal,
       statusSaatIni: rawRow.statusSaatIni,
     });
-    await this.callbacks.sendBroadcast(message);
+    const replyMarkup = buildNewSiveraSuratButtons(rawRow.nomorSurat);
+    await this.callbacks.sendBroadcast(message, replyMarkup ? { replyMarkup } : undefined);
     return message;
   }
 

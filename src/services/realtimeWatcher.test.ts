@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { RealtimeWatcher } from "./realtimeWatcher.js";
 import { PpidClient } from "./ppidClient.js";
 
-test("RealtimeWatcher: handlePermohonanInsert mengirim notif dengan NIK tersensor & dedup", async () => {
-  const sent: string[] = [];
+test("RealtimeWatcher: handlePermohonanInsert mengirim notif dengan NIK tersensor, auto-cari arsip, inline button & dedup", async () => {
+  const sent: Array<{ msg: string; hasButtons: boolean; archiveUrl?: string }> = [];
   const mockPpid = new PpidClient({
     customGetById: async (id) => ({
       id,
@@ -26,8 +26,21 @@ test("RealtimeWatcher: handlePermohonanInsert mengirim notif dengan NIK tersenso
   });
 
   const watcher = new RealtimeWatcher(
-    { sendBroadcast: async (msg) => { sent.push(msg); } },
-    { ppidClient: mockPpid },
+    {
+      sendBroadcast: async (msg, opts) => {
+        sent.push({
+          msg,
+          hasButtons: Boolean(opts?.replyMarkup?.inline_keyboard?.length),
+          archiveUrl: opts?.replyMarkup?.inline_keyboard?.[1]?.[0]?.url,
+        });
+      },
+    },
+    {
+      ppidClient: mockPpid,
+      searchArchiveFn: async () => [
+        { file_id: "drv-lra-2026", name: "LRA_CIKASDA_2026.pdf" },
+      ],
+    },
   );
 
   const msg1 = await watcher.handlePermohonanInsert({ id: 42 });
@@ -36,7 +49,10 @@ test("RealtimeWatcher: handlePermohonanInsert mengirim notif dengan NIK tersenso
   assert.match(msg1, /Andi Pratama/);
   assert.match(msg1, /727101\*\*\*\*\*\*0001/);
   assert.doesNotMatch(msg1, /7271012345670001/);
+  assert.match(msg1, /LRA_CIKASDA_2026\.pdf/);
   assert.equal(sent.length, 1);
+  assert.equal(sent[0].hasButtons, true);
+  assert.equal(sent[0].archiveUrl, "https://drive.google.com/file/d/drv-lra-2026/view");
 
   // Event ulang dengan ID yang sama harus di-dedup
   const msg2 = await watcher.handlePermohonanInsert({ id: 42 });

@@ -33,6 +33,11 @@ const envSchema = z.object({
     .string()
     .min(1, "DRIVE_MINUTES_FOLDER_ID wajib diisi (ID folder tujuan simpan draf notulen)"),
 
+  DRIVE_WATCH_FOLDER_ID: z
+    .string()
+    .default("")
+    .describe("ID folder Google Drive masuk yang dipantau otomatis oleh DriveWatcher (opsional)"),
+
   AUDIT_LOG_SHEET_ID: z
     .string()
     .min(1, "AUDIT_LOG_SHEET_ID wajib diisi (ID Google Sheet untuk audit log)"),

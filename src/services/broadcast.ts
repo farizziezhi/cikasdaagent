@@ -22,6 +22,20 @@
 
 const TELEGRAM_API = "https://api.telegram.org";
 
+export interface TelegramInlineButton {
+  text: string;
+  url?: string;
+  callback_data?: string;
+}
+
+export interface TelegramInlineKeyboardMarkup {
+  inline_keyboard: TelegramInlineButton[][];
+}
+
+export interface SendBroadcastOptions {
+  replyMarkup?: TelegramInlineKeyboardMarkup;
+}
+
 /**
  * Normalisasi chat ID: buang awalan platform seperti 'telegram:' (atau prefix apapun sebelum ':')
  * Contoh: 'telegram:2100878150' -> '2100878150'
@@ -85,21 +99,30 @@ function splitForTelegram(text: string, limit = 4000): string[] {
 export async function sendTelegramMessage(
   chatId: string,
   text: string,
+  options?: SendBroadcastOptions,
 ): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) throw new Error("TELEGRAM_BOT_TOKEN belum di-set di .env");
 
   const cleanChatId = normalizeChatId(chatId);
-  for (const part of splitForTelegram(text)) {
+  const parts = splitForTelegram(text);
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    const isLast = i === parts.length - 1;
+    const bodyPayload: Record<string, unknown> = {
+      chat_id: cleanChatId,
+      text: part,
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+    };
+    if (isLast && options?.replyMarkup) {
+      bodyPayload.reply_markup = options.replyMarkup;
+    }
+
     const res = await fetch(`${TELEGRAM_API}/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        chat_id: cleanChatId,
-        text: part,
-        parse_mode: "HTML",
-        disable_web_page_preview: true,
-      }),
+      body: JSON.stringify(bodyPayload),
     });
     if (!res.ok) {
       const body = await res.text().catch(() => "");
@@ -112,7 +135,10 @@ export async function sendTelegramMessage(
 
 /** Kirim satu pesan ke semua chat penerima. Gagal di satu chat tidak
  *  menggagalkan chat lain; error dicatat ke console. */
-export async function sendBroadcast(message: string): Promise<void> {
+export async function sendBroadcast(
+  message: string,
+  options?: SendBroadcastOptions,
+): Promise<void> {
   const chatIds = await getBroadcastChatIds();
   if (chatIds.length === 0) {
     console.warn(
@@ -122,7 +148,7 @@ export async function sendBroadcast(message: string): Promise<void> {
   }
   for (const chatId of chatIds) {
     try {
-      await sendTelegramMessage(chatId, message);
+      await sendTelegramMessage(chatId, message, options);
       console.log(`[broadcast] terkirim ke ${chatId}`);
     } catch (err) {
       console.error(`[broadcast] gagal ke ${chatId}:`, err);

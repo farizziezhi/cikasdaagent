@@ -3,6 +3,7 @@ import { Type } from "typebox";
 import { CommandCenterScheduler } from "./services/commandCenterScheduler.js";
 import { sendBroadcast, sendAdminBroadcast } from "./services/broadcast.js";
 import { RealtimeWatcher } from "./services/realtimeWatcher.js";
+import { DriveWatcher } from "./services/driveWatcher.js";
 
 export default definePluginEntry({
   id: "ppid-agent-tools",
@@ -357,6 +358,9 @@ export default definePluginEntry({
 
       const realtimeWatcher = new RealtimeWatcher({ sendBroadcast });
       realtimeWatcher.start();
+
+      const driveWatcher = new DriveWatcher({ sendBroadcast });
+      driveWatcher.start(300_000); // cek folder masuk Drive tiap 5 menit
     }
   }
 }) as any;

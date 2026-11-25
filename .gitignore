@@ -25,3 +25,4 @@ docs/plans/
 
 # Scheduler persistent state
 data/scheduler-sent.json
+data/drive-watcher-processed.json
