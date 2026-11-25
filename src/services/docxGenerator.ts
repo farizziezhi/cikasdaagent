@@ -8,7 +8,7 @@ import {
   BorderStyle,
   convertInchesToTwip,
   ShadingType,
-  PageBreak
+  PageBreak,
 } from "docx";
 
 export interface ActionItemDetail {
@@ -43,7 +43,9 @@ export interface MeetingSynthesisResult {
  * 1. Notulen Rapat Modern (Catatan kerja ringkas to-the-point)
  * 2. Berita Acara / Siaran Pers "CIKASDA NEWS" (Narasi jurnalistik resmi siap publikasi)
  */
-export async function generateMinutesDocx(data: ModernMinutesData | MeetingSynthesisResult): Promise<Buffer> {
+export async function generateMinutesDocx(
+  data: ModernMinutesData | MeetingSynthesisResult,
+): Promise<Buffer> {
   const currentDate = new Date().toLocaleDateString("id-ID", {
     weekday: "long",
     year: "numeric",
@@ -87,7 +89,11 @@ export async function generateMinutesDocx(data: ModernMinutesData | MeetingSynth
     new Paragraph({
       spacing: { after: 200 },
       children: [
-        new TextRun({ text: "Waktu / Pelaksanaan: ", bold: true, color: "64748B" }),
+        new TextRun({
+          text: "Waktu / Pelaksanaan: ",
+          bold: true,
+          color: "64748B",
+        }),
         new TextRun({ text: displayDate, color: "334155" }),
       ],
     }),
@@ -127,7 +133,10 @@ export async function generateMinutesDocx(data: ModernMinutesData | MeetingSynth
               type: ShadingType.CLEAR,
               fill: "F8FAFC",
             },
-            indent: { left: convertInchesToTwip(0.15), right: convertInchesToTwip(0.15) },
+            indent: {
+              left: convertInchesToTwip(0.15),
+              right: convertInchesToTwip(0.15),
+            },
             children: [
               new TextRun({
                 text: minutes.executive_summary,
@@ -161,7 +170,7 @@ export async function generateMinutesDocx(data: ModernMinutesData | MeetingSynth
             new TextRun({ text: "•  ", bold: true, color: "2563EB" }),
             new TextRun({ text: point }),
           ],
-        })
+        }),
     ),
 
     // Kesepakatan & Keputusan Rapat
@@ -186,7 +195,7 @@ export async function generateMinutesDocx(data: ModernMinutesData | MeetingSynth
             new TextRun({ text: `${i + 1}. `, bold: true, color: "16A34A" }),
             new TextRun({ text: decision }),
           ],
-        })
+        }),
     ),
 
     // Tindak Lanjut / Action Items
@@ -302,7 +311,7 @@ export async function generateMinutesDocx(data: ModernMinutesData | MeetingSynth
                 size: 23,
               }),
             ],
-          })
+          }),
       ),
 
       // Paragraf Penutup / Closing
@@ -315,7 +324,7 @@ export async function generateMinutesDocx(data: ModernMinutesData | MeetingSynth
             italics: false,
           }),
         ],
-      })
+      }),
     );
   }
 
@@ -344,7 +353,7 @@ export async function generateMinutesDocx(data: ModernMinutesData | MeetingSynth
           color: "94A3B8",
         }),
       ],
-    })
+    }),
   );
 
   const doc = new Document({
@@ -384,7 +393,9 @@ export async function generateMinutesDocx(data: ModernMinutesData | MeetingSynth
  * Membuat dokumen Word (.docx) khusus Berita Acara / Siaran Pers "CIKASDA NEWS"
  * (tanpa notulen rapat) untuk diunggah ke Google Drive / dibuka di Google Docs.
  */
-export async function generateNewsOnlyDocx(news: NewsArticleData): Promise<Buffer> {
+export async function generateNewsOnlyDocx(
+  news: NewsArticleData,
+): Promise<Buffer> {
   const currentDate = new Date().toLocaleDateString("id-ID", {
     weekday: "long",
     year: "numeric",
