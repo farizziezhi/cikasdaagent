@@ -64,6 +64,7 @@ export interface PpidClientOptions {
   customFetchActive?: () => Promise<PermohonanRow[]>;
   customGetById?: (id: number) => Promise<PermohonanRow | null>;
   customUpdateExtend?: (id: number, deadlineBaru: string, alasan: string) => Promise<void>;
+  customUpdateStatus?: (id: number, status: PermohonanRow["status"]) => Promise<void>;
 }
 
 export function maskNik(nik?: string | null): string {
@@ -88,11 +89,13 @@ export class PpidClient {
   private customFetchActive?: () => Promise<PermohonanRow[]>;
   private customGetById?: (id: number) => Promise<PermohonanRow | null>;
   private customUpdateExtend?: (id: number, deadlineBaru: string, alasan: string) => Promise<void>;
+  private customUpdateStatus?: (id: number, status: PermohonanRow["status"]) => Promise<void>;
 
   constructor(options: PpidClientOptions = {}) {
     this.customFetchActive = options.customFetchActive;
     this.customGetById = options.customGetById;
     this.customUpdateExtend = options.customUpdateExtend;
+    this.customUpdateStatus = options.customUpdateStatus;
 
     const url = options.supabaseUrl ?? env.PPID_SUPABASE_URL;
     const key = options.supabaseKey ?? env.PPID_SUPABASE_SERVICE_KEY;
@@ -266,6 +269,35 @@ export class PpidClient {
       deadlineBaru,
       alasan,
     };
+  }
+
+  /**
+   * Perbarui status tiket permohonan di PPID-Digital (Two-Way Sync dari Telegram).
+   */
+  public async updatePermohonanStatus(
+    id: number,
+    status: PermohonanRow["status"],
+  ): Promise<{ id: number; status: PermohonanRow["status"] }> {
+    if (this.customUpdateStatus) {
+      await this.customUpdateStatus(id, status);
+      return { id, status };
+    }
+
+    if (this.supabase) {
+      const { error } = await this.supabase
+        .from("permohonan")
+        .update({
+          status,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+
+      if (error) {
+        throw new Error(`Gagal memperbarui status tiket #${id}: ${error.message}`);
+      }
+    }
+
+    return { id, status };
   }
 }
 

@@ -16,7 +16,8 @@
       "check_apelin_session",
       "trigger_morning_digest",
       "create_wordpress_draft",
-      "create_news_draft"
+      "create_news_draft",
+      "resolve_and_archive_ppid"
     ]
 
 

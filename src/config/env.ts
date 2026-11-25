@@ -38,6 +38,26 @@ const envSchema = z.object({
     .default("")
     .describe("ID folder Google Drive masuk yang dipantau otomatis oleh DriveWatcher (opsional)"),
 
+  PPID_DRIVE_FOLDER_ID: z
+    .string()
+    .default("")
+    .describe("ID folder Google Drive khusus arsip jawaban PPID (opsional, fallback ke DRIVE_ARCHIVE_FOLDER_ID)"),
+
+  PPID_DRIVE_CLIENT_ID: z
+    .string()
+    .default("")
+    .describe("OAuth2 Client ID akun Google Drive PPID-Digital (opsional, Cara B)"),
+
+  PPID_DRIVE_CLIENT_SECRET: z
+    .string()
+    .default("")
+    .describe("OAuth2 Client Secret akun Google Drive PPID-Digital (opsional, Cara B)"),
+
+  PPID_DRIVE_REFRESH_TOKEN: z
+    .string()
+    .default("")
+    .describe("OAuth2 Refresh Token akun Google Drive PPID-Digital (opsional, Cara B)"),
+
   AUDIT_LOG_SHEET_ID: z
     .string()
     .min(1, "AUDIT_LOG_SHEET_ID wajib diisi (ID Google Sheet untuk audit log)"),

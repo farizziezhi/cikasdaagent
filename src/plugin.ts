@@ -341,7 +341,46 @@ export default definePluginEntry({
       },
     });
 
-    console.log("[OpenClaw] PPID tools registered successfully (13 tools: Notulensi, Arsip, Memori, PPID SLA Watchdog, SIVERA Tracking, APEL-IN Presence, Morning Briefing, WordPress Draft, & Google Docs News Draft).");
+    // 14. Tool: resolve_and_archive_ppid (Two-Way Sync PPID-Digital + Zero-Touch Auto-Filing)
+    api.registerTool({
+      name: "resolve_and_archive_ppid",
+      label: "Resolve & Archive PPID Document (Two-Way Sync)",
+      description:
+        "Mengarsipkan berkas jawaban/dokumen PPID secara otomatis (penamaan standar dinas, klasifikasi Berkala/Serta Merta/Setiap Saat, unggah ke Google Drive, dan catat ke Sheet DaftarInformasiPublik) sekaligus memperbarui status tiket di Supabase PPID-Digital (Two-Way Sync) langsung dari Telegram.",
+      parameters: Type.Object({
+        ticket_id: Type.Optional(
+          Type.Number({ description: "ID tiket permohonan PPID-Digital yang diperbarui statusnya (opsional)" }),
+        ),
+        new_status: Type.Optional(
+          Type.Union([Type.Literal("diproses"), Type.Literal("dijawab"), Type.Literal("ditolak")], {
+            description: "Status baru tiket di PPID-Digital (default: dijawab)",
+          }),
+        ),
+        file_path: Type.Optional(
+          Type.String({ description: "Path lokal file dokumen yang akan diarsipkan ke Google Drive" }),
+        ),
+        document_title: Type.Optional(
+          Type.String({ description: "Judul atau topik dokumen untuk penamaan standar arsip" }),
+        ),
+        kip_category: Type.Optional(
+          Type.Union([Type.Literal("Berkala"), Type.Literal("Serta Merta"), Type.Literal("Setiap Saat")], {
+            description: "Klasifikasi informasi publik UU KIP (opsional, otomatis dideteksi bila kosong)",
+          }),
+        ),
+        notes: Type.Optional(Type.String({ description: "Catatan tambahan" })),
+        chat_id: Type.String({ description: "Chat ID petugas Telegram" }),
+      }),
+      async execute(_id, params: any) {
+        const { executeResolveAndArchivePpid } = await import("./tools/ppidAutoFileTool.js");
+        const result = await executeResolveAndArchivePpid(params);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result) }],
+          details: result,
+        };
+      },
+    });
+
+    console.log("[OpenClaw] PPID tools registered successfully (14 tools: Notulensi, Arsip, Memori, PPID SLA Watchdog, Two-Way Sync & Auto-Filing, SIVERA Tracking, APEL-IN Presence, Morning Briefing, WordPress Draft, & Google Docs News Draft).");
 
     // --- Scheduler proaktif (PATCH GABUNGAN 2026-11-17) ---
     // Inilah yang selama ini hilang: scheduler dibuat + start() dipanggil,
