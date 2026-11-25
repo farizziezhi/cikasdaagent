@@ -306,7 +306,49 @@ export async function executeTranscribeMinutes(params: TranscribeParams) {
     }
 
     if (!geminiResult) {
-      throw lastGeminiErr || new Error("Semua model Gemini gagal memproses materi rapat.");
+      // Fallback ke 9Router lokal (Round Robin Gemini -> Agnes 3.0 Flash -> Groq Qwen3-32B)
+      const routerBase = (env.ROUTER_BASE_URL || "http://127.0.0.1:20128/v1").replace(/\/+$/, "");
+      const routerModels = [
+        "gemini/gemini-3.5-flash-lite",
+        "gemini/gemini-3.8-flash",
+        "agnes/agnes-3.0-flash",
+        "groq/qwen/qwen3-32b",
+      ];
+      for (const rModel of routerModels) {
+        try {
+          const res = await fetch(`${routerBase}/chat/completions`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(env.ROUTER_API_KEY ? { Authorization: `Bearer ${env.ROUTER_API_KEY}` } : {}),
+            },
+            body: JSON.stringify({
+              model: rModel,
+              response_format: { type: "json_object" },
+              messages: [
+                { role: "system", content: systemPrompt },
+                {
+                  role: "user",
+                  content: `Berikut adalah materi kegiatan/rapat untuk disintesis dalam format JSON:\n\n${combinedTextPrompt}`,
+                },
+              ],
+            }),
+          });
+          if (!res.ok) continue;
+          const data = (await res.json()) as any;
+          const rawContent = data?.choices?.[0]?.message?.content;
+          if (rawContent) {
+            geminiResult = { response: { text: () => rawContent } };
+            break;
+          }
+        } catch (rErr: any) {
+          console.warn(`[TranscribeMinutes] Fallback 9Router ${rModel} gagal:`, rErr?.message || rErr);
+        }
+      }
+    }
+
+    if (!geminiResult) {
+      throw lastGeminiErr || new Error("Semua model Gemini dan 9Router gagal memproses materi rapat.");
     }
 
     const parsed = JSON.parse(geminiResult.response.text());
