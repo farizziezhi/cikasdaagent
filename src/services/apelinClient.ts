@@ -87,7 +87,7 @@ export class ApelinClient {
     if (connectionString && !this.customGetSession) {
       this.pool = new Pool({
         connectionString,
-        max: 5,
+        max: 2,
         idleTimeoutMillis: 10000,
         connectionTimeoutMillis: 5000,
         ssl: { rejectUnauthorized: false },
